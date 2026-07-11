@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>8086 Advanced Architecture Visualizer</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            /* Ultra Dark Theme */
+            --bg-base: #0a0a0c;
+            --bg-panel: #131417;
+            --bg-card: #1c1d22;
+            --border-dim: #2d2f36;
+            --border-light: #495057;
+            
+            --text-main: #f8f9fa;
+            --text-dim: #868e96;
+            --text-empty: #495057;
+            
+            /* Register Colors */
+            --ax-color: #5c8dff;
+            --bx-color: #4cd964;
+            --cx-color: #ffcc00;
+            --dx-color: #ff3b30;
+            --sp-color: #5ac8fa;
+            --adv-color: #d066ff; /* SI, DI, BP */
+
+            --font-sans: 'Inter', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            font-family: var(--font-sans);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* --- SIDEBAR --- */
+        #sidebar {
+            width: 260px;
+            background: var(--bg-panel);
+            border-right: 1px solid var(--border-dim);
+            display: flex;
+            flex-direction: column;
+            padding: 1.5rem 1rem;
+            z-index: 10;
+        }
+        
+        .brand { margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-dim); display: flex; align-items: center; gap: 12px; }
+        .brand-icon { color: var(--sp-color); }
+        .brand-text h1 { font-size: 1.1rem; font-weight: 700; color: var(--text-main); margin-bottom: 2px;}
+        .brand-text span { font-size: 0.75rem; color: var(--text-dim); font-family: var(--font-mono); }
+
+        /* Advanced Toggle in Sidebar */
+        .adv-sidebar-wrap { display: flex; align-items: center; gap: 10px; font-size: 0.8rem; color: var(--adv-color); background: rgba(208, 102, 255, 0.05); padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(208, 102, 255, 0.2); margin-bottom: 1.5rem;}
+        .switch { position: relative; display: inline-block; width: 34px; height: 20px; flex-shrink: 0;}
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--border-light); transition: .3s; border-radius: 22px; }
+        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--adv-color); }
+        input:checked + .slider:before { transform: translateX(14px); }
+
+        .nav-item {
+            display: block;
+            padding: 0.75rem 1rem;
+            color: var(--text-dim);
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 0.2rem;
+            border: 1px solid transparent;
+        }
+        .nav-item:hover { color: var(--text-main); background: rgba(255,255,255,0.03); }
+        .nav-item.active { background: rgba(92, 141, 255, 0.1); color: var(--ax-color); border-color: rgba(92, 141, 255, 0.2); }
+
+        .nav-header { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); margin: 1.5rem 0 0.5rem 0.5rem; }
+
+        .signature {
+            margin-top: auto;
+            text-align: center;
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.4);
+            line-height: 1.4;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-dim);
+        }
+
+        /* --- MAIN CONTENT --- */
+        #main-content {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 2rem 3rem;
+            position: relative;
+        }
+        
+        .section-container { display: none; animation: fadeIn 0.3s ease; max-width: 1300px; margin: 0 auto; }
+        .section-container.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        h2.title { font-size: 2rem; font-weight: 700; margin-bottom: 1.5rem; letter-spacing: -0.5px; display: flex; justify-content: space-between; align-items: center;}
+        
+        /* --- STACK VISUALIZER SHARED WORKSPACE --- */
+        .stk-workspace {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-dim);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            margin-bottom: 2rem;
+        }
+
+        .stk-layout { display: grid; grid-template-columns: 1fr 1.5fr; gap: 3rem; }
+
+        /* Stack Grid */
+        .stk-grid-container { display: flex; height: 500px; overflow-y: auto; padding-right: 1rem; border-radius: 8px; background: #0a0a0c; border: 1px solid var(--border-dim); position: relative; scroll-behavior: smooth;}
+        
+        .stk-addresses {
+            display: flex;
+            flex-direction: column;
+            padding-right: 1rem;
+            padding-left: 1rem;
+            text-align: right;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--text-main);
+            position: relative;
+            background: var(--bg-panel);
+            border-right: 1px solid var(--border-light);
+            z-index: 2;
+        }
+        .stk-addr-row { height: 45px; display: flex; align-items: center; justify-content: flex-end; flex-shrink: 0;}
+        
+        .stk-memory { flex-grow: 1; display: flex; flex-direction: column; }
+        .stk-slot {
+            height: 45px;
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-mono);
+            font-weight: 700;
+            font-size: 1rem;
+            color: var(--text-empty);
+            flex-shrink: 0;
+            transition: all 0.2s;
+        }
+        .stk-slot.filled { color: var(--text-main); background: rgba(255,255,255,0.03); }
+        .stk-slot.highlight { background: rgba(92, 141, 255, 0.2); }
+
+        /* The Cut / Overwrite Effect */
+        .cut-val {
+            position: relative;
+            color: var(--text-dim);
+            font-size: 0.85em;
+            margin-right: 8px;
+            display: inline-block;
+        }
+        .cut-val::after {
+            content: '/';
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            color: var(--dx-color);
+            font-size: 1.4em;
+            font-weight: 800;
+            opacity: 0.8;
+        }
+
+        /* Pointer */
+        .stk-pointer {
+            position: absolute;
+            right: 4.5rem;
+            color: var(--sp-color);
+            font-family: var(--font-mono);
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: top 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 5;
+        }
+        .stk-pointer::after {
+            content: '';
+            width: 45px;
+            height: 2px;
+            background: var(--sp-color);
+        }
+
+        /* Registers */
+        .stk-regs { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; align-content: start; }
+        .stk-reg-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-dim);
+            border-radius: 8px;
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            transition: border-color 0.2s;
+        }
+        .stk-reg-card:focus-within { border-color: var(--text-dim); }
+        .stk-reg-name { font-family: var(--font-sans); font-size: 1.1rem; font-weight: 700; }
+        .stk-reg-val-container { text-align: right; display: flex; align-items: baseline; justify-content: flex-end; }
+        
+        .stk-reg-input {
+            background: transparent;
+            border: none;
+            outline: none;
+            color: var(--text-main);
+            font-family: var(--font-mono);
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-align: right;
+            width: 70px;
+            padding: 0; margin: 0;
+        }
+        .stk-reg-input:focus { border-bottom: 2px solid var(--sp-color); }
+        
+        .adv-reg { display: none; } /* Hidden by default */
+        
+        .c-sp { color: var(--sp-color); }
+        .c-ax { color: var(--ax-color); }
+        .c-bx { color: var(--bx-color); }
+        .c-cx { color: var(--cx-color); }
+        .c-dx { color: var(--dx-color); }
+        .c-adv { color: var(--adv-color); }
+
+        /* Controls Grid */
+        .control-box {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-dim);
+            border-radius: 12px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            margin-bottom: 1.5rem;
+        }
+        .box-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;}
+
+        /* Manual CLI */
+        .cli-input-wrapper { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+        .cli-input {
+            flex-grow: 1;
+            background: #000;
+            border: 1px solid var(--border-dim);
+            color: var(--ax-color);
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            font-family: var(--font-mono);
+            font-size: 1rem;
+            outline: none;
+        }
+        .cli-input:focus { border-color: var(--ax-color); }
+        
+        .btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border-dim);
+            color: var(--text-main);
+            padding: 0.6rem 1rem;
+            border-radius: 6px;
+            font-family: var(--font-sans);
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+        .btn:hover { background: rgba(255,255,255,0.05); border-color: var(--text-dim); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-primary { background: rgba(92, 141, 255, 0.15); color: var(--ax-color); border-color: rgba(92, 141, 255, 0.3); }
+        .btn-primary:hover:not(:disabled) { background: rgba(92, 141, 255, 0.25); }
+        
+        .btn-play { background: rgba(76, 217, 100, 0.15); color: var(--bx-color); border-color: rgba(76, 217, 100, 0.3); }
+        .btn-play:hover:not(:disabled) { background: rgba(76, 217, 100, 0.25); }
+        .btn-pause { background: rgba(255, 204, 0, 0.15); color: var(--cx-color); border-color: rgba(255, 204, 0, 0.3); }
+        .btn-pause:hover:not(:disabled) { background: rgba(255, 204, 0, 0.25); }
+        
+        .btn-reset { background: transparent; color: var(--text-dim); border: 1px solid var(--border-dim); font-size: 0.85rem; padding: 0.4rem 0.8rem; cursor:pointer;}
+        .btn-reset:hover { color: var(--dx-color); border-color: var(--dx-color); }
+
+        /* Improved Quick Actions for Manual Mode */
+        .quick-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.5rem; }
+        .qa-btn { 
+            padding: 0.6rem 1.2rem; 
+            font-family: var(--font-mono); 
+            font-size: 0.9rem; 
+            font-weight: 700;
+            border-radius: 8px; 
+            background: rgba(255,255,255,0.05); 
+            border: 1px solid var(--border-light); 
+            color: var(--text-main); 
+            cursor: pointer; 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .qa-btn:hover { 
+            transform: translateY(-2px) scale(1.05);
+            color: #fff; 
+            background: rgba(92, 141, 255, 0.2);
+            border-color: var(--ax-color); 
+            box-shadow: 0 6px 12px rgba(92, 141, 255, 0.2);
+        }
+        .qa-btn:active {
+            transform: translateY(0) scale(0.95);
+        }
+        .qa-btn.qa-adv:hover {
+            background: rgba(208, 102, 255, 0.2);
+            border-color: var(--adv-color);
+            box-shadow: 0 6px 12px rgba(208, 102, 255, 0.2);
+        }
+
+        /* Batch Editor */
+        .batch-textarea {
+            flex-grow: 1;
+            background: #000;
+            border: 1px solid var(--border-dim);
+            color: var(--bx-color);
+            padding: 1rem;
+            border-radius: 6px;
+            font-family: var(--font-mono);
+            font-size: 0.95rem;
+            resize: none;
+            outline: none;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+            height: 180px;
+        }
+        .batch-textarea:focus { border-color: var(--border-light); }
+        
+        .stepper-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            background: rgba(0,0,0,0.3);
+            padding: 0.75rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-dim);
+        }
+        .step-counter { font-family: var(--font-mono); font-size: 0.9rem; color: var(--text-dim); font-weight: bold; width: 120px; text-align: center;}
+
+        /* Log Box */
+        .stk-log-box {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-dim);
+            border-left: 4px solid var(--ax-color);
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            font-family: var(--font-sans);
+            font-size: 0.95rem;
+            line-height: 1.6;
+            color: var(--text-main);
+            margin-bottom: 1.5rem;
+            min-height: 70px;
+        }
+
+        /* Architecture Elements */
+        .code-block {
+            background: var(--bg-card);
+            font-family: var(--font-mono);
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-dim);
+            margin-bottom: 1rem;
+        }
+        .hl { background: rgba(255,255,255,0.1); padding: 0.1rem 0.3rem; border-radius: 4px; font-family: var(--font-mono); color: var(--text-main); }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-base); }
+        ::-webkit-scrollbar-thumb { background: var(--border-dim); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
+    </style>
+</head>
+<body>
+
+    <nav id="sidebar">
+        <!-- 1. Microprocessor Sign -->
+        <div class="brand">
+            <svg class="brand-icon" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+                <path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"></path>
+            </svg>
+            <div class="brand-text">
+                <h1>8086 SIMULATOR</h1>
+                <span>Architecture Visualizer</span>
+            </div>
+        </div>
+
+        <!-- Ultimate Advanced Toggle -->
+        <div class="adv-sidebar-wrap">
+            <label class="switch">
+                <input type="checkbox" id="toggle-adv-global" onchange="toggleAdvancedGlobal()">
+                <span class="slider"></span>
+            </label>
+            Enable Advanced Features<br>(SI, DI, BP, XCHG)
+        </div>
+        
+        <div class="nav-header">CORE EMULATOR</div>
+        <a class="nav-item active" data-target="sec-batch">Batch Execution Engine</a>
+        <a class="nav-item" data-target="sec-manual">Manual Execution Engine</a>
+        
+        <div class="nav-header">ARCHITECTURE REFERENCE</div>
+        <a class="nav-item" data-target="sec-validator">Instruction Validator</a>
+        <a class="nav-item" data-target="sec-map">Memory Map Overview</a>
+
+        <!-- 4. Signature Added -->
+        <div class="signature">
+            Mahmudul Hasan<br>(2202156)
+        </div>
+    </nav>
+
+    <main id="main-content">
+        
+        <!-- ================= BATCH EXECUTION ENGINE (PAGE 1) ================= -->
+        <section id="sec-batch" class="section-container active">
+            
+            <h2 class="title">
+                Batch Execution Engine
+                <button class="btn btn-reset" onclick="resetSystem()">↻ Hard Reset</button>
+            </h2>
+
+            <div class="control-box">
+                <div class="box-title">
+                    <span>Code Editor</span>
+                    <button class="btn btn-primary" onclick="loadBatch()" id="btn-b-load" style="padding:0.6rem 1.2rem; font-size:0.95rem; font-weight:700; background-color:var(--ax-color); color:#000; box-shadow:0 4px 12px rgba(92,141,255,0.4); border:none;">Compile & Load</button>
+                </div>
+                <textarea id="b-batch-code" class="batch-textarea" spellcheck="false" placeholder="Enter assembly instructions...">MOV AX, 5566H
+MOV BX, 7788H
+PUSH AX
+PUSH BX
+POP CX
+POP DX</textarea>
+                
+                <div class="stepper-controls">
+                    <button class="btn" id="btn-b-prev" onclick="stepPrev()" disabled>⏮ Prev</button>
+                    <button class="btn btn-play" id="btn-b-play" onclick="playBatch()" disabled>▶ Play</button>
+                    <button class="btn btn-pause" id="btn-b-pause" onclick="pauseBatch()" disabled>⏸ Pause</button>
+                    <button class="btn btn-primary" id="btn-b-next" onclick="stepNext()" disabled>Next ⏭</button>
+                    <span class="step-counter" id="b-step-counter">Edit Mode</span>
+                </div>
+            </div>
+
+            <div class="stk-log-box" id="b-log">
+                <strong style="color:var(--sp-color); font-size:1.1rem; margin-bottom:5px;">System Initialized</strong><br>
+                <span style="color:var(--text-dim);">Write your code above, click 'Compile & Load', then use the playback controls to animate the execution.</span>
+            </div>
+
+            <!-- BATCH WORKSPACE -->
+            <div class="stk-workspace">
+                <div class="stk-layout">
+                    <!-- LEFT: STACK GRID (Scrollable) -->
+                    <div class="stk-grid-container" id="b-mem-scroll">
+                        <div class="stk-addresses" id="b-addr-col">
+                            <div class="stk-pointer" id="b-sp-ptr">SP</div>
+                        </div>
+                        <div class="stk-memory" id="b-mem-col"></div>
+                    </div>
+
+                    <!-- RIGHT: REGISTERS -->
+                    <div class="stk-regs">
+                        <div class="stk-reg-card"><div class="stk-reg-name c-sp">SP</div><div class="stk-reg-val-container"><input type="text" class="stk-reg-input inp-sp" value="2009" maxlength="4"><span style="font-size:0.8rem; color:var(--text-dim); margin-left:2px;">H</span></div></div>
+                        <div class="stk-reg-card"><div class="stk-reg-name c-ax">AX</div><div class="stk-reg-val-container"><input type="text" class="stk-reg-input inp-ax" value="5566" maxlength="4"><span style="font-size:0.8rem; color:var(--text-dim); margin-left:2px;">H</span></div></div>
+                        <div class="stk-reg-card"><div class="stk-reg-name c-bx">BX</div><div class="stk-reg-val-container"><input type="text" class="stk-reg-input inp-bx" value="7788" maxlength="4"><span style="font-size:0.8rem; color:var(--text-dim); margin-left:2px;">H</span></div></div>
+                        <div class="stk-reg-card"><div class="stk-reg-name c-cx">CX</div><div class="stk-reg-val-container"><input type="text" class="stk-reg-input inp-cx" value="0000" maxlength="4"><span style="font-size:0.8rem; color:var(--text-dim); margin-left:2px;">H</span></div></div>
+                        <div class="stk-reg-card"><div class="stk-reg-name c-dx">DX</div><div class="stk-reg-val-container"><input type="text" class="stk-reg-input inp-dx" value="0000" maxlength="4"><span style="font-size:0.8rem; color:var(--text-dim); margin-left:2px;">H</span></div></div>
+                        
+                        <!-- Advanced Regs -->
+                        <div class="stk-reg-card adv-reg"><div class="stk-reg-name c-adv">SI</div><div class="stk-reg-val-container"><input type="text" class="stk-reg-input inp-si" value="0000" maxlength="4"><span style="font-size:0.8rem; color:var(--text-dim); margin-left:2px;">H</span></div></div>
+                        <div class="stk-reg-card adv-reg"><div class="stk-reg-name c-adv">DI</div><div class="stk-reg-val-container"><input type="text" class="stk-reg-input inp-di" value="0000" maxlength="4"><span style="font-size:0.8rem; color:var(--text-dim); margin-left:2px;">H</span></div></div>
+                        <div class="stk-reg-card adv-reg"><div class="stk-reg-name c-adv">BP</div><div class="stk-reg-val-container"><input type="text" class="stk-reg-input inp-bp" value="0000" maxlength="4"><span style="font-size:0.8rem; color:var(--text-dim); margin-left:2px;">H</span></div></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ================= MANUAL EXECUTION ENGINE (PAGE 2) ================= -->
+        <section id="sec-manual" class="section-container">
+            
+            <h2 class="title">
+                Manual Execution Engine
+                <button class="btn btn-reset" onclick="resetSystem()">↻ Hard Reset</button>
+            </h2>
+
+            <div class="control-box">
+                <div class="box-title">Command Line Interface</div>
+                <div class="cli-input-wrapper">
+                    <input type="text" id="m-cli-input" class="cli-input" placeholder="e.g. PUSH AX or MOV [BX], 1234H" autocomplete="off" spellcheck="false">
+                    <button class="btn btn-primary" onclick="execManual()">Execute</button>
+                </div>
+                
+                <div style="font-size:0.95rem; color:var(--text-main); margin-bottom:0.5rem; font-weight: 600;">Press them to see output lol:</div>
+                <div class="quick-actions" style="margin-bottom: 0.5rem;">
+                    <button class="qa-btn" style="color:var(--ax-color); border-color:rgba(92,141,255,0.3);" onclick="document.getElementById('m-cli-input').value='PUSH AX'; execManual();">PUSH AX</button>
+                    <button class="qa-btn" style="color:var(--bx-color); border-color:rgba(76,217,100,0.3);" onclick="document.getElementById('m-cli-input').value='PUSH BX'; execManual();">PUSH BX</button>
+                    <button class="qa-btn" style="color:var(--cx-color); border-color:rgba(255,204,0,0.3);" onclick="document.getElementById('m-cli-input').value='PUSH CX'; execManual();">PUSH CX</button>
+                    <button class="qa-btn" style="color:var(--dx-color); border-color:rgba(255,59,48,0.3);" onclick="document.getElementById('m-cli-input').value='PUSH DX'; execManual();">PUSH DX</button>
+                </div>
+                <div class="quick-actions">
+                    <button class="qa-btn" style="color:var(--ax-color); border-color:rgba(92,141,255,0.3);" onclick="document.getElementById('m-cli-input').value='POP AX'; execManual();">POP AX</button>
+                    <button class="qa-btn" style="color:var(--bx-color); border-color:rgba(76,217,100,0.3);" onclick="document.getElementById('m-cli-input').value='POP BX'; execManual();">POP BX</button>
+                    <button class="qa-btn" style="color:var(--cx-color); border-color:rgba(255,204,0,0.3);" onclick="document.getElementById('m-cli-input').value='POP CX'; execManual();">POP CX</button>
+                    <button class="qa-btn" style="color:var(--dx-color); border-color:rgba(255,59,48,0.3);" onclick="document.getElementById('m-cli-input').value='POP DX'; execManual();">POP DX</button>
+                </div>
+                <div class="quick-actions adv-reg" style="margin-top:0.5rem;">
+                    <button class="qa-btn qa-adv" onclick="document.getElementById('m-cli-input').value='XCHG AX, BX'; execManual();" style="color:var(--adv-color); border-color:rgba(208,102,255,0.4);">XCHG AX, BX</button>
+                    <button class="qa-btn qa-adv" onclick="document.getElementById('m-cli-input').value='PUSH SI'; execManual();" style="color:var(--adv-color); border-color:rgba(208,102,255,0.4);">PUSH SI</button>
+                    <button class="qa-btn qa-adv" onclick="document.getElementById('m-cli-input').value='POP DI'; execManual();" style="color:var(--adv-color); border-color:rgba(208,102,255,0.4);">POP DI</button>
+                    <button class="qa-btn qa-adv" onclick="document.getElementById('m-cli-input').value='MOV [BX], AX'; execManual();" style="color:var(--adv-color); border-color:rgba(208,102,255,0.4);">MOV [BX], AX</button>
+                </div>
+            </div>
+
+            <div class="stk-log-box" id="m-log">
+                <strong style="color:var(--sp-color); font-size:1.1rem; margin-bottom:5px;">Manual Mode Active</strong><br>
+                <span style="color:var(--text-dim);">Execute individual instructions or change register values to immediately see the architectural response.</span>
+            </div>
+
+            <!-- MANUAL WORKSPACE -->
+            <div class="stk-workspace">
+                <div class="stk-layout">
+                    <!-- LEFT: STACK GRID (Scrollable) -->
+                    <div class="stk-grid-container" id="m-mem-scroll">
+                        <div class="stk-addresses" id="m-addr-col">
+                            <div class="stk-pointer" id="m-sp-ptr">SP</div>
+                        </div>
+                        <div class="stk-memory" id="m-mem-col"></div>
+                    </div>
+
+                    <!-- RIGHT: REGISTERS -->
+                    <div class="stk-regs">
+                        <div class="stk-reg-card"><div class="stk-reg-name c-sp">SP</div><div class="stk-reg-val-container"><input type="text" class="stk-reg-input inp-sp" value="2009" maxlength="4"><span style="font-size:0.8rem; color:var(--text-dim); margin-left:2px;">H</span></div></div>
+                        <div class="stk-reg-card"><div class="stk-reg-name c-ax">AX</div><div class="stk-reg-val-container"><input type="text" class="stk-reg-input inp-ax" value="5566" maxlength="4"><span style="font-size:0.8rem; color:var(--text-dim); margin-left:2px;">H</span></div></div>
+                        <div class="stk-reg-card"><div class="stk-reg-name c-bx">BX</div><div class="stk-reg-val-container"><input type="text" class="stk-reg-input inp-bx" value="7788" maxlength="4"><span style="font-size:0.8rem; color:var(--text-dim); margin-left:2px;">H</span></div></div>
+                        <div class="stk-reg-card"><div class="stk-reg-name c-cx">CX</div><div class="stk-reg-val-container"><input type="text" class="stk-reg-input inp-cx" value="0000" maxlength="4"><span style="font-size:0.8rem; color:var(--text-dim); margin-left:2px;">H</span></div></div>
+                        <div class="stk-reg-card"><div class="stk-reg-name c-dx">DX</div><div class="stk-reg-val-container"><input type="text" class="stk-reg-input inp-dx" value="0000" maxlength="4"><span style="font-size:0.8rem; color:var(--text-dim); margin-left:2px;">H</span></div></div>
+                        
+                        <!-- Advanced Regs -->
+                        <div class="stk-reg-card adv-reg"><div class="stk-reg-name c-adv">SI</div><div class="stk-reg-val-container"><input type="text" class="stk-reg-input inp-si" value="0000" maxlength="4"><span style="font-size:0.8rem; color:var(--text-dim); margin-left:2px;">H</span></div></div>
+                        <div class="stk-reg-card adv-reg"><div class="stk-reg-name c-adv">DI</div><div class="stk-reg-val-container"><input type="text" class="stk-reg-input inp-di" value="0000" maxlength="4"><span style="font-size:0.8rem; color:var(--text-dim); margin-left:2px;">H</span></div></div>
+                        <div class="stk-reg-card adv-reg"><div class="stk-reg-name c-adv">BP</div><div class="stk-reg-val-container"><input type="text" class="stk-reg-input inp-bp" value="0000" maxlength="4"><span style="font-size:0.8rem; color:var(--text-dim); margin-left:2px;">H</span></div></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ================= INSTRUCTION VALIDATOR ================= -->
+        <section id="sec-validator" class="section-container">
+            <h2 class="title">Instruction Validator & Corrector</h2>
+            <div class="control-box">
+                <div class="cli-input-wrapper" style="margin-bottom:0;">
+                    <input type="text" class="cli-input" id="val-input" placeholder="e.g., POP 1234H, MOV CS, AX, MOV [BX], [DI]" autocomplete="off" spellcheck="false">
+                    <button class="btn btn-primary" onclick="validateInput()">Check Instruction</button>
+                </div>
+            </div>
+
+            <div id="val-result" class="val-result" style="display:none; padding:1.5rem; border-radius:8px; border-left:4px solid; background:var(--bg-card); margin-top:1rem;">
+                <div class="val-title" id="val-res-title" style="font-size: 1.2rem; font-weight: 700; margin-bottom: 1rem;"></div>
+                <p class="val-reason" id="val-res-reason" style="color:var(--text-dim); margin-bottom:1rem; line-height:1.5;"></p>
+                <div id="val-res-correction-box" style="display:none; font-family:var(--font-mono); background:#000; padding:1rem; border-radius:6px; color:var(--ax-color);"></div>
+            </div>
+        </section>
+
+        <!-- ================= MEMORY MAP OVERVIEW & REAL MODE ================= -->
+        <section id="sec-map" class="section-container">
+             <h2 class="title">Memory Segments & Real Mode</h2>
+             
+             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+                 <!-- Physical Address Calculator -->
+                 <div class="control-box">
+                     <h3 style="color:var(--ax-color); margin-bottom:1rem;">Interactive Address Calculator</h3>
+                     <p style="color:var(--text-dim); margin-bottom:1rem; font-size:0.9rem;">Calculate the 20-bit physical address from 16-bit Segment and Offset registers.</p>
+                     
+                     <div style="display:flex; gap:15px; align-items:center; margin-bottom: 1.5rem; justify-content: center;">
+                         <div style="text-align:center;">
+                             <label style="color:var(--text-dim); font-size:0.8rem;">Segment</label><br>
+                             <input type="text" id="calc-seg" class="cli-input" value="1000" maxlength="4" style="width:85px; text-align:center; padding:0.5rem; margin-top:5px;">
+                         </div>
+                         <div style="font-size:1.8rem; font-weight:bold; margin-top:15px; color:var(--text-dim);">:</div>
+                         <div style="text-align:center;">
+                             <label style="color:var(--text-dim); font-size:0.8rem;">Offset</label><br>
+                             <input type="text" id="calc-off" class="cli-input" value="2000" maxlength="4" style="width:85px; text-align:center; padding:0.5rem; margin-top:5px;">
+                         </div>
+                     </div>
+                     
+                     <div class="code-block" style="font-size: 1.1rem; line-height: 1.8; margin-bottom:0;">
+                         <div style="display:flex; justify-content:space-between;"><span style="color:var(--text-dim)">Shifted Seg:</span> <span id="calc-res-seg" style="color:var(--cx-color)">10000H</span></div>
+                         <div style="display:flex; justify-content:space-between; border-bottom:1px dashed var(--border-dim); padding-bottom:5px;"><span style="color:var(--text-dim)">+ Offset:</span> <span id="calc-res-off" style="color:var(--bx-color)">02000H</span></div>
+                         <div style="display:flex; justify-content:space-between; padding-top:5px; font-weight:bold;"><span style="color:var(--text-main)">Physical Addr:</span> <span id="calc-res-phys" style="color:var(--sp-color); font-size: 1.2em;">12000H</span></div>
+                     </div>
+                 </div>
+
+                 <!-- Segment Overlap Rule & Little Endian -->
+                 <div style="display:flex; flex-direction:column; gap:1.5rem;">
+                     <div class="control-box" style="margin-bottom:0;">
+                         <h3 style="color:var(--bx-color); margin-bottom:0.5rem;">Segment Overlap Rule</h3>
+                         <p style="color:var(--text-dim); font-size:0.9rem; line-height:1.5;">The 8086 has a 20-bit address bus (1MB memory) but 16-bit registers. To reach 1MB, it uses 64KB segments shifted by 16 bytes (10H).</p>
+                         <div class="stk-log-box" style="border-left-color: var(--dx-color); padding: 0.75rem 1rem; min-height:auto; margin-top:1rem; margin-bottom:0;">
+                             <strong style="color:var(--dx-color);">Important:</strong> Because segments shift by only 10H, they heavily overlap. E.g., <span class="hl">1000:2000</span> and <span class="hl">1200:0000</span> point to the exact same physical memory address (<span class="hl">12000H</span>).
+                         </div>
+                     </div>
+
+                     <div class="control-box" style="margin-bottom:0; flex-grow:1;">
+                         <h3 style="color:var(--cx-color); margin-bottom:0.5rem;">Little Endian Format</h3>
+                         <p style="color:var(--text-dim); font-size:0.9rem; line-height:1.5;">When saving a 16-bit word (e.g., <span class="hl">AABB</span>) into memory, the "Little End" (Least Significant Byte) goes to the lower address.</p>
+                         <div style="display:flex; justify-content:space-around; align-items:center; margin-top:0.5rem; background:rgba(0,0,0,0.3); padding:0.5rem; border-radius:6px; border:1px solid var(--border-dim); font-family:var(--font-mono);">
+                             <div style="text-align:center;"><div style="font-size:0.75rem; color:var(--text-dim);">Addr: 2001</div><div style="color:var(--ax-color); font-weight:bold;">AA <span style="font-size:0.7em;color:var(--text-dim)">[High]</span></div></div>
+                             <div style="text-align:center;"><div style="font-size:0.75rem; color:var(--text-dim);">Addr: 2000</div><div style="color:var(--bx-color); font-weight:bold;">BB <span style="font-size:0.7em;color:var(--text-dim)">[Low]</span></div></div>
+                         </div>
+                     </div>
+                 </div>
+             </div>
+        </section>
+
+    </main>
+
+    <script>
+        // --- NAVIGATION ---
+        document.querySelectorAll('.nav-item').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.querySelectorAll('.nav-item').forEach(l => l.classList.remove('active'));
+                document.querySelectorAll('.section-container').forEach(s => s.classList.remove('active'));
+                link.classList.add('active');
+                document.getElementById(link.getAttribute('data-target')).classList.add('active');
+                
+                // If moving to manual, ensure batch stops
+                if (link.getAttribute('data-target') !== 'sec-batch') pauseBatch();
+            });
+        });
+
+        // --- CORE EMULATOR STATE ---
+        const SP_INIT = 0x2009;
+        const MEM_START = 0x2009;
+        const MEM_END = 0x1FDC; // Generate slots down to here
+        const ROW_H = 45;
+
+        let sys = {
+            sp: SP_INIT,
+            regs: { AX: '5566', BX: '7788', CX: '0000', DX: '0000', SI: '0000', DI: '0000', BP: '0000' }
+        };
+        
+        let memHistory = {}; 
+        let isAdvanced = false;
+        
+        // --- TIME TRAVEL (HISTORY) STATE ---
+        let historyStack = [];
+        let batchLines = [];
+        let currentStep = -1;
+        let isBatchMode = false;
+        let playInterval = null;
+        let isPlaying = false;
+
+        // --- UI INITIALIZATION ---
+        function initMemoryUI() {
+            ['b', 'm'].forEach(pfx => {
+                let addrCol = document.getElementById(`${pfx}-addr-col`);
+                let memCol = document.getElementById(`${pfx}-mem-col`);
+                let ptr = document.getElementById(`${pfx}-sp-ptr`);
+                addrCol.innerHTML = ''; addrCol.appendChild(ptr);
+                memCol.innerHTML = '';
+
+                for (let addr = MEM_START; addr >= MEM_END; addr--) {
+                    let hexA = addr.toString(16).toUpperCase();
+                    addrCol.innerHTML += `<div class="stk-addr-row">${hexA}H</div>`;
+                    memCol.innerHTML += `<div class="stk-slot" id="${pfx}-slot-${hexA}">Empty</div>`;
+                }
+            });
+        }
+        initMemoryUI();
+
+        // --- GLOBAL ADVANCED TOGGLE ---
+        function toggleAdvancedGlobal() {
+            isAdvanced = document.getElementById('toggle-adv-global').checked;
+            document.querySelectorAll('.adv-reg').forEach(el => {
+                el.style.display = isAdvanced ? (el.tagName === 'DIV' ? 'flex' : 'block') : 'none';
+            });
+        }
+
+        // --- INPUT LISTENERS (Sync across both views) ---
+        ['AX', 'BX', 'CX', 'DX', 'SI', 'DI', 'BP'].forEach(reg => {
+            document.querySelectorAll(`.inp-${reg.toLowerCase()}`).forEach(inputEl => {
+                inputEl.addEventListener('change', (e) => {
+                    let v = e.target.value.replace(/[^0-9A-Fa-f]/g, '').toUpperCase().padStart(4, '0');
+                    sys.regs[reg] = v; e.target.value = v;
+                    saveHistory(`Manual Edit: ${reg}=${v}H`, "Register manually updated.");
+                });
+            });
+        });
+
+        document.querySelectorAll('.inp-sp').forEach(inputEl => {
+            inputEl.addEventListener('change', (e) => {
+                let v = e.target.value.replace(/[^0-9A-Fa-f]/g, '').toUpperCase();
+                let num = parseInt(v, 16);
+                if (isNaN(num)) num = SP_INIT;
+                sys.sp = num; e.target.value = sys.sp.toString(16).toUpperCase().padStart(4, '0');
+                saveHistory(`Manual Edit: SP=${e.target.value}H`, "Stack Pointer manually updated.");
+                updateUI();
+            });
+        });
+
+        document.getElementById('m-cli-input').addEventListener('keypress', e => {
+            if(e.key === 'Enter') execManual();
+        });
+        document.getElementById('val-input').addEventListener('keypress', e => {
+            if(e.key === 'Enter') validateInput();
+        });
+        document.getElementById('b-batch-code').addEventListener('input', () => {
+            exitBatchMode();
+        });
+
+
+        // --- UI UPDATER ---
+        function updateUI() {
+            ['b', 'm'].forEach(pfx => {
+                // Update SP pointer visually
+                let topOffset = 22 + ((MEM_START - sys.sp) * ROW_H);
+                let ptr = document.getElementById(`${pfx}-sp-ptr`);
+                if (ptr) ptr.style.top = topOffset + 'px';
+                
+                // Auto-scroll
+                let scrollArea = document.getElementById(`${pfx}-mem-scroll`);
+                if (scrollArea) {
+                    if (topOffset > scrollArea.scrollTop + 300) {
+                        scrollArea.scrollTop = topOffset - 200;
+                    } else if (topOffset < scrollArea.scrollTop) {
+                        scrollArea.scrollTop = topOffset - 50;
+                    }
+                }
+
+                // Sync Inputs
+                ['AX', 'BX', 'CX', 'DX', 'SI', 'DI', 'BP'].forEach(r => {
+                    let input = document.querySelector(`#sec-${pfx === 'b' ? 'batch' : 'manual'} .inp-${r.toLowerCase()}`);
+                    if (input && document.activeElement !== input) input.value = sys.regs[r];
+                });
+                let spInput = document.querySelector(`#sec-${pfx === 'b' ? 'batch' : 'manual'} .inp-sp`);
+                if (spInput && document.activeElement !== spInput) {
+                    spInput.value = sys.sp.toString(16).toUpperCase().padStart(4, '0');
+                }
+
+                // Render Memory with Cut (/) Effect
+                for (let addr = MEM_START; addr >= MEM_END; addr--) {
+                    let hexAddr = addr.toString(16).toUpperCase();
+                    let slot = document.getElementById(`${pfx}-slot-${hexAddr}`);
+                    if(!slot) continue;
+
+                    let hist = memHistory[hexAddr] || [];
+                    
+                    if (hist.length > 0) {
+                        let html = '';
+                        for(let i = 0; i < hist.length - 1; i++) {
+                            html += `<span class="cut-val">${hist[i]}</span>`;
+                        }
+                        html += `<span>${hist[hist.length - 1]}<span style="font-size:0.7em; color:var(--text-dim); margin-left:2px;">H</span></span>`;
+                        slot.innerHTML = html;
+                        slot.classList.add('filled');
+                    } else {
+                        slot.innerHTML = 'Empty';
+                        slot.classList.remove('filled');
+                    }
+                }
+            });
+        }
+
+        // --- CORE EMULATOR FUNCTIONS ---
+        function writeMem16(addrHex, valHex) {
+            valHex = valHex.padStart(4, '0').toUpperCase();
+            let highByte = valHex.substring(0, 2);
+            let lowByte = valHex.substring(2, 4);
+            
+            let addrDec = parseInt(addrHex, 16);
+            let hAddr = (addrDec + 1).toString(16).toUpperCase();
+            let lAddr = addrDec.toString(16).toUpperCase();
+            
+            writeMem8(hAddr, highByte);
+            writeMem8(lAddr, lowByte);
+            
+            // Visual Highlight in both workspaces
+            ['b', 'm'].forEach(pfx => {
+                let s1 = document.getElementById(`${pfx}-slot-${hAddr}`);
+                let s2 = document.getElementById(`${pfx}-slot-${lAddr}`);
+                if(s1) { s1.classList.add('highlight'); setTimeout(()=>s1.classList.remove('highlight'), 500); }
+                if(s2) { s2.classList.add('highlight'); setTimeout(()=>s2.classList.remove('highlight'), 500); }
+            });
+        }
+
+        function writeMem8(addrHex, valByte) {
+            if (!memHistory[addrHex]) memHistory[addrHex] = [];
+            let len = memHistory[addrHex].length;
+            if (len === 0 || memHistory[addrHex][len - 1] !== valByte) {
+                 memHistory[addrHex].push(valByte);
+            }
+        }
+
+        function readMem16(addrHex) {
+            let addrDec = parseInt(addrHex, 16);
+            let hAddr = (addrDec + 1).toString(16).toUpperCase();
+            let lAddr = addrDec.toString(16).toUpperCase();
+            return readMem8(hAddr) + readMem8(lAddr);
+        }
+
+        function readMem8(addrHex) {
+            let hist = memHistory[addrHex] || [];
+            if (hist.length === 0) return '00';
+            return hist[hist.length - 1];
+        }
+
+        function resolveOperand(opStr) {
+            if(!opStr) return null;
+            opStr = opStr.trim().toUpperCase();
+            if (sys.regs[opStr] !== undefined) return { type: 'reg', target: opStr };
+            if (opStr === 'SP') return { type: 'sp' };
+            let immMatch = opStr.match(/^([0-9A-F]+)H?$/);
+            if (immMatch) return { type: 'imm', value: immMatch[1].padStart(4, '0') };
+            let memMatch = opStr.match(/^\[(.*)\]$/);
+            if (memMatch && isAdvanced) {
+                let inner = memMatch[1].trim();
+                if (sys.regs[inner] !== undefined) return { type: 'mem', addrReg: inner };
+                let innerImm = inner.match(/^([0-9A-F]+)H?$/);
+                if (innerImm) return { type: 'mem', addrImm: innerImm[1] };
+            }
+            return null;
+        }
+
+        function readOperand(opDef) {
+            if (opDef.type === 'reg') return sys.regs[opDef.target];
+            if (opDef.type === 'sp') return sys.sp.toString(16).toUpperCase().padStart(4, '0');
+            if (opDef.type === 'imm') return opDef.value;
+            if (opDef.type === 'mem') {
+                let addr = opDef.addrReg ? parseInt(sys.regs[opDef.addrReg], 16) : parseInt(opDef.addrImm, 16);
+                return readMem16(addr.toString(16));
+            }
+            return '0000';
+        }
+
+        function writeOperand(opDef, valHex) {
+            valHex = valHex.padStart(4, '0').toUpperCase();
+            if (opDef.type === 'reg') sys.regs[opDef.target] = valHex;
+            if (opDef.type === 'sp') sys.sp = parseInt(valHex, 16);
+            if (opDef.type === 'mem') {
+                let addr = opDef.addrReg ? parseInt(sys.regs[opDef.addrReg], 16) : parseInt(opDef.addrImm, 16);
+                writeMem16(addr.toString(16), valHex);
+            }
+        }
+
+        function logAction(title, details) {
+            let html = `<strong style="color:var(--sp-color); font-size:1.05rem; margin-bottom:5px;">${title}</strong>
+                        <span style="color:var(--text-dim);">${details}</span>`;
+            
+            // Update both log boxes
+            ['b-log', 'm-log'].forEach(id => {
+                let box = document.getElementById(id);
+                if (box) {
+                    box.innerHTML = html;
+                    box.style.animation = 'none'; 
+                    box.offsetHeight; 
+                    box.style.animation = 'fadeIn 0.3s ease';
+                }
+            });
+        }
+
+        function parseAndExecute(line) {
+            line = line.trim().toUpperCase();
+            if (!line || line.startsWith(';')) return { success: true, skip: true }; 
+            
+            let parts = line.replace(/,/g, ' ').split(/\s+/);
+            let cmd = parts[0];
+            
+            try {
+                if (cmd === 'PUSH') {
+                    let op = resolveOperand(parts[1]);
+                    if(!op) throw "Invalid operand.";
+                    if(op.type === 'imm') throw "Cannot PUSH immediate value.";
+                    if(sys.sp <= MEM_END + 2) throw "Simulation Stack Overflow.";
+                    let val = readOperand(op);
+                    sys.sp -= 2;
+                    writeMem16(sys.sp.toString(16), val);
+                    return { success: true, title: `PUSH ${parts[1]}`, desc: `SP-2. Stored ${val}H at ${sys.sp.toString(16).toUpperCase()}H.` };
+                }
+                else if (cmd === 'POP') {
+                    let op = resolveOperand(parts[1]);
+                    if(!op) throw "Invalid operand.";
+                    if(op.type === 'imm') throw "Cannot POP into immediate.";
+                    if(sys.sp >= SP_INIT) throw "Stack Empty.";
+                    let val = readMem16(sys.sp.toString(16));
+                    sys.sp += 2;
+                    writeOperand(op, val);
+                    return { success: true, title: `POP ${parts[1]}`, desc: `Read ${val}H. SP+2.` };
+                }
+                else if (cmd === 'MOV') {
+                    let opDest = resolveOperand(parts[1]);
+                    let opSrc = resolveOperand(parts[2]);
+                    if(!opDest || !opSrc) throw "Invalid operands.";
+                    if(opDest.type === 'imm') throw "Destination cannot be immediate.";
+                    if(opDest.type === 'mem' && opSrc.type === 'mem') throw "Memory to Memory transfer not allowed.";
+                    let val = readOperand(opSrc);
+                    writeOperand(opDest, val);
+                    return { success: true, title: `MOV ${parts[1]}, ${parts[2]}`, desc: `Copied ${val}H.` };
+                }
+                else if (cmd === 'XCHG' && isAdvanced) {
+                    let op1 = resolveOperand(parts[1]);
+                    let op2 = resolveOperand(parts[2]);
+                    if(!op1 || !op2) throw "Invalid operands.";
+                    if(op1.type === 'imm' || op2.type === 'imm') throw "Cannot XCHG with immediate.";
+                    let v1 = readOperand(op1);
+                    let v2 = readOperand(op2);
+                    writeOperand(op1, v2);
+                    writeOperand(op2, v1);
+                    return { success: true, title: `XCHG ${parts[1]}, ${parts[2]}`, desc: `Swapped values.` };
+                }
+                else {
+                    throw "Instruction not supported, check syntax or enable Advanced Mode.";
+                }
+            } catch (e) {
+                return { success: false, error: e.toString() };
+            }
+        }
+
+
+        // --- HISTORY / TIME TRAVEL SYSTEM ---
+        function saveHistory(title, desc) {
+            if (isBatchMode && currentStep < historyStack.length - 1) {
+                historyStack = historyStack.slice(0, currentStep + 1);
+            }
+            
+            let snap = {
+                sys: JSON.parse(JSON.stringify(sys)),
+                mem: JSON.parse(JSON.stringify(memHistory)),
+                title: title,
+                desc: desc
+            };
+            historyStack.push(snap);
+            currentStep = historyStack.length - 1;
+            updateUI();
+            logAction(title, desc);
+            updateStepperUI();
+        }
+
+        function restoreHistory(index) {
+            if (index < 0 || index >= historyStack.length) return;
+            currentStep = index;
+            let snap = historyStack[index];
+            sys = JSON.parse(JSON.stringify(snap.sys));
+            memHistory = JSON.parse(JSON.stringify(snap.mem));
+            updateUI();
+            logAction(snap.title, snap.desc);
+            updateStepperUI();
+        }
+
+        // --- MANUAL EXECUTION ---
+        function execManual() {
+            pauseBatch();
+            exitBatchMode();
+            let input = document.getElementById('m-cli-input');
+            let cmd = input.value;
+            if(!cmd) return;
+            
+            if (historyStack.length === 0) saveHistory("System Start", "Initial State");
+            
+            let res = parseAndExecute(cmd);
+            if(res.success && !res.skip) {
+                saveHistory(`Executed: ${res.title}`, res.desc);
+                input.value = '';
+            } else if (!res.success) {
+                logAction(`⚠️ Error: ${cmd}`, res.error);
+            }
+        }
+
+        // --- BATCH & STEPPER ---
+        function loadBatch() {
+            pauseBatch();
+            let code = document.getElementById('b-batch-code').value;
+            batchLines = code.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith(';'));
+            if(batchLines.length === 0) return alert("No valid instructions found.");
+            
+            isBatchMode = true;
+            historyStack = [];
+            currentStep = 0;
+            
+            saveHistory("Loaded Script", `Ready to execute ${batchLines.length} instructions.`);
+            
+            document.getElementById('btn-b-load').textContent = 'Reload Script';
+            document.getElementById('btn-b-play').disabled = false;
+            document.getElementById('btn-b-next').disabled = false;
+            updateStepperUI();
+        }
+
+        function exitBatchMode() {
+            pauseBatch();
+            isBatchMode = false;
+            document.getElementById('b-step-counter').textContent = "Edit Mode";
+            document.getElementById('btn-b-prev').disabled = true;
+            document.getElementById('btn-b-next').disabled = true;
+            document.getElementById('btn-b-play').disabled = true;
+            document.getElementById('btn-b-pause').disabled = true;
+            document.getElementById('btn-b-load').textContent = 'Compile & Load';
+        }
+
+        function playBatch() {
+            if (!isBatchMode || isPlaying) return;
+            if (currentStep >= batchLines.length) return alert("Already at end of script. Reload or Reset.");
+            
+            isPlaying = true;
+            document.getElementById('btn-b-play').disabled = true;
+            document.getElementById('btn-b-pause').disabled = false;
+            
+            playInterval = setInterval(() => {
+                if (currentStep >= batchLines.length) {
+                    pauseBatch();
+                    logAction(`✅ Batch Complete`, `All instructions executed successfully.`);
+                    return;
+                }
+                stepNext();
+            }, 1200); // 1.2s between steps
+        }
+
+        function pauseBatch() {
+            isPlaying = false;
+            if (playInterval) {
+                clearInterval(playInterval);
+                playInterval = null;
+            }
+            let playBtn = document.getElementById('btn-b-play');
+            let pauseBtn = document.getElementById('btn-b-pause');
+            if (playBtn && isBatchMode) playBtn.disabled = false;
+            if (pauseBtn) pauseBtn.disabled = true;
+        }
+
+        function stepNext() {
+            if (!isBatchMode || currentStep >= batchLines.length) return; 
+            
+            if (currentStep === historyStack.length - 1) {
+                let line = batchLines[currentStep];
+                let res = parseAndExecute(line);
+                if(res.success && !res.skip) {
+                    saveHistory(`Step ${currentStep+1}: ${res.title}`, res.desc);
+                } else if (!res.success) {
+                    logAction(`⚠️ Error on Line ${currentStep+1}`, res.error);
+                    pauseBatch();
+                } else if (res.skip) {
+                    saveHistory(`Skip Line ${currentStep+1}`, `Comment or empty space.`);
+                }
+            } else {
+                restoreHistory(currentStep + 1);
+            }
+        }
+
+        function stepPrev() {
+            if (!isBatchMode || currentStep <= 0) return;
+            pauseBatch();
+            restoreHistory(currentStep - 1);
+        }
+
+        function updateStepperUI() {
+            if (!isBatchMode) return;
+            document.getElementById('b-step-counter').textContent = `Step ${currentStep} / ${batchLines.length}`;
+            document.getElementById('btn-b-prev').disabled = (currentStep === 0);
+            
+            let isAtEnd = (currentStep >= batchLines.length);
+            document.getElementById('btn-b-next').disabled = isAtEnd;
+            if(isAtEnd) pauseBatch();
+        }
+
+        function resetSystem() {
+            pauseBatch();
+            sys.sp = SP_INIT;
+            sys.regs = { AX: '5566', BX: '7788', CX: '0000', DX: '0000', SI: '0000', DI: '0000', BP: '0000' };
+            memHistory = {}; 
+            historyStack = [];
+            currentStep = -1;
+            exitBatchMode();
+            logAction(`System Hard Reset`, `Memory wiped. Registers restored to default.`);
+            updateUI();
+        }
+
+        // --- INSTRUCTION VALIDATOR ---
+        function validateInput() {
+            let input = document.getElementById('val-input').value.trim().toUpperCase();
+            let resBox = document.getElementById('val-result');
+            let resTitle = document.getElementById('val-res-title');
+            let resReason = document.getElementById('val-res-reason');
+            let resCorrBox = document.getElementById('val-res-correction-box');
+            
+            if (!input) return;
+            resBox.style.display = 'block';
+            resCorrBox.style.display = 'none';
+
+            let result = parseValidatorRule(input);
+
+            if (result.valid) {
+                resBox.style.borderColor = 'var(--bx-color)';
+                resTitle.innerHTML = `<span style="color:var(--bx-color);">✓ Valid Instruction</span>`;
+                resReason.innerHTML = result.reason;
+            } else {
+                resBox.style.borderColor = 'var(--dx-color)';
+                resTitle.innerHTML = `<span style="color:var(--dx-color);">✕ Invalid Instruction</span>`;
+                resReason.innerHTML = result.reason;
+                if (result.correction) {
+                    resCorrBox.style.display = 'block';
+                    resCorrBox.innerHTML = `<div>Valid Alternative / Suggestion:</div>${result.correction}`;
+                }
+            }
+        }
+
+        function parseValidatorRule(inst) {
+            inst = inst.trim().toUpperCase().replace(/\s+/g, ' ').replace(/\s*,\s*/g, ',');
+            if (!inst) return { valid: false, reason: "Empty instruction.", correction: "MOV AX, BX" };
+
+            let parts = inst.split(/[\s,]+/);
+            let opcode = parts[0];
+            let op1 = parts[1];
+            let op2 = parts[2];
+
+            const validOpcodes = ['MOV', 'PUSH', 'POP', 'ADD', 'SUB', 'XCHG'];
+
+            if (!validOpcodes.includes(opcode)) {
+                let closest = validOpcodes.find(op => op.startsWith(opcode.charAt(0))) || 'MOV';
+                return { valid: false, reason: "Unrecognized instruction or unsupported opcode.", correction: `Did you mean: ${closest} AX, BX ?` };
+            }
+
+            if (['MOV', 'ADD', 'SUB', 'XCHG'].includes(opcode) && (!op1 || !op2)) {
+                return { valid: false, reason: `${opcode} requires two operands.`, correction: `${opcode} AX, BX` };
+            }
+            if (['PUSH', 'POP'].includes(opcode) && !op1) {
+                return { valid: false, reason: `${opcode} requires one operand.`, correction: `${opcode} AX` };
+            }
+
+            if (opcode === 'PUSH') {
+                if (/^[0-9A-F]+H?$/.test(op1)) return { valid: false, reason: "Cannot PUSH an immediate value in standard 8086.", correction: `MOV AX, ${op1}<br>PUSH AX` };
+                return { valid: true, reason: "Syntax conforms to architectural rules." };
+            }
+
+            if (opcode === 'POP') {
+                if (/^[0-9A-F]+H?$/.test(op1)) return { valid: false, reason: "Cannot POP into an immediate value.", correction: "POP AX" };
+                if (op1 === 'CS') return { valid: false, reason: "Cannot POP directly into the Code Segment (CS).", correction: "POP DS" };
+                return { valid: true, reason: "Syntax conforms to architectural rules." };
+            }
+
+            if (opcode === 'MOV') {
+                if (op1 === 'CS') return { valid: false, reason: "Cannot MOV directly into Code Segment (CS).", correction: "MOV DS, " + (op2 || "AX") };
+                if (/^[0-9A-F]+H?$/.test(op1)) return { valid: false, reason: "Destination cannot be an immediate constant.", correction: `MOV AX, ${op1}` };
+                if (['CS', 'DS', 'ES', 'SS'].includes(op1) && /^[0-9A-F]+H?$/.test(op2)) {
+                    return { valid: false, reason: "Segment registers do not accept immediate data directly.", correction: `MOV AX, ${op2}<br>MOV ${op1}, AX` };
+                }
+                if (/^\[.*\]$/.test(op1) && /^\[.*\]$/.test(op2)) {
+                    return { valid: false, reason: "Direct memory-to-memory transfers are not allowed.", correction: `MOV AX, ${op2}<br>MOV ${op1}, AX` };
+                }
+                return { valid: true, reason: "Syntax conforms to architectural rules." };
+            }
+            
+            if (opcode === 'XCHG') {
+                if (/^[0-9A-F]+H?$/.test(op1) || /^[0-9A-F]+H?$/.test(op2)) return { valid: false, reason: "Cannot XCHG with immediate values.", correction: "XCHG AX, BX" };
+                if (/^\[.*\]$/.test(op1) && /^\[.*\]$/.test(op2)) return { valid: false, reason: "Cannot XCHG memory to memory.", correction: `MOV AX, ${op1}<br>XCHG AX, ${op2}<br>MOV ${op1}, AX` };
+                return { valid: true, reason: "Syntax conforms to architectural rules." };
+            }
+            
+            if (['ADD', 'SUB'].includes(opcode)) {
+                if (/^[0-9A-F]+H?$/.test(op1)) return { valid: false, reason: "Destination cannot be an immediate constant.", correction: `${opcode} AX, ${op1}` };
+                if (/^\[.*\]$/.test(op1) && /^\[.*\]$/.test(op2)) return { valid: false, reason: "Direct memory-to-memory arithmetic is not allowed.", correction: `MOV AX, ${op2}<br>${opcode} ${op1}, AX` };
+                return { valid: true, reason: "Syntax conforms to architectural rules." };
+            }
+
+            return { valid: false, reason: "Invalid syntax format.", correction: "Check instruction spelling and format." };
+        }
+
+        // --- CALCULATOR LOGIC ---
+        function updateCalc() {
+            let segInput = document.getElementById('calc-seg');
+            let offInput = document.getElementById('calc-off');
+            if(!segInput || !offInput) return;
+            
+            let s = segInput.value.replace(/[^0-9A-Fa-f]/g, '').toUpperCase().padStart(4, '0');
+            let o = offInput.value.replace(/[^0-9A-Fa-f]/g, '').toUpperCase().padStart(4, '0');
+            
+            document.getElementById('calc-res-seg').textContent = s + '0H';
+            document.getElementById('calc-res-off').textContent = o.padStart(5, '0') + 'H';
+            
+            let res = parseInt(s, 16) * 16 + parseInt(o, 16);
+            document.getElementById('calc-res-phys').textContent = res.toString(16).toUpperCase().padStart(5, '0') + 'H';
+        }
+        
+        let segInp = document.getElementById('calc-seg');
+        let offInp = document.getElementById('calc-off');
+        if(segInp && offInp) {
+            segInp.addEventListener('input', updateCalc);
+            offInp.addEventListener('input', updateCalc);
+            updateCalc();
+        }
+
+        updateUI(); // Init
+    </script>
+</body>
+</html>
