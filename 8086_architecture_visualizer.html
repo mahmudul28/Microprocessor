@@ -279,14 +279,23 @@
             font-size: 0.85rem;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s, background-color 0.2s, border-color 0.2s;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             gap: 5px;
         }
-        .btn:hover { background: rgba(255,255,255,0.05); border-color: var(--text-dim); }
+        .btn:hover:not(:disabled) { 
+            background: rgba(255,255,255,0.05); 
+            border-color: var(--text-dim); 
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .btn:active:not(:disabled) {
+            transform: translateY(0) scale(0.98);
+        }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        
         .btn-primary { background: rgba(92, 141, 255, 0.15); color: var(--ax-color); border-color: rgba(92, 141, 255, 0.3); }
         .btn-primary:hover:not(:disabled) { background: rgba(92, 141, 255, 0.25); }
         
@@ -296,7 +305,28 @@
         .btn-pause:hover:not(:disabled) { background: rgba(255, 204, 0, 0.25); }
         
         .btn-reset { background: transparent; color: var(--text-dim); border: 1px solid var(--border-dim); font-size: 0.85rem; padding: 0.4rem 0.8rem; cursor:pointer;}
-        .btn-reset:hover { color: var(--dx-color); border-color: var(--dx-color); }
+        .btn-reset:hover:not(:disabled) { color: var(--dx-color); border-color: var(--dx-color); }
+
+        /* The Special Glowing Compile Button */
+        #btn-b-load {
+            padding: 0.6rem 1.2rem; 
+            font-size: 0.95rem; 
+            font-weight: 700; 
+            background-color: var(--ax-color); 
+            color: #000; 
+            border: none; 
+            box-shadow: 0 4px 12px rgba(92, 141, 255, 0.4);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        #btn-b-load:hover:not(:disabled) {
+            background-color: #7ba2ff;
+            box-shadow: 0 0 15px rgba(92, 141, 255, 0.8), 0 0 30px rgba(92, 141, 255, 0.6);
+            transform: translateY(-3px) scale(1.03);
+        }
+        #btn-b-load:active:not(:disabled) {
+            transform: translateY(0) scale(0.97);
+            box-shadow: 0 2px 6px rgba(92, 141, 255, 0.6);
+        }
 
         /* Improved Quick Actions for Manual Mode */
         .quick-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.5rem; }
@@ -443,7 +473,7 @@
             <div class="control-box">
                 <div class="box-title">
                     <span>Code Editor</span>
-                    <button class="btn btn-primary" onclick="loadBatch()" id="btn-b-load" style="padding:0.6rem 1.2rem; font-size:0.95rem; font-weight:700; background-color:var(--ax-color); color:#000; box-shadow:0 4px 12px rgba(92,141,255,0.4); border:none;">Compile & Load</button>
+                    <button class="btn" id="btn-b-load" onclick="loadBatch()">Compile & Load</button>
                 </div>
                 <textarea id="b-batch-code" class="batch-textarea" spellcheck="false" placeholder="Enter assembly instructions...">MOV AX, 5566H
 MOV BX, 7788H
@@ -576,6 +606,7 @@ POP DX</textarea>
                 <div class="cli-input-wrapper" style="margin-bottom:0;">
                     <input type="text" class="cli-input" id="val-input" placeholder="e.g., POP 1234H, MOV CS, AX, MOV [BX], [DI]" autocomplete="off" spellcheck="false">
                     <button class="btn btn-primary" onclick="validateInput()">Check Instruction</button>
+                    <button class="btn btn-play" onclick="toggleBooksExamples()" style="margin-left: 10px;">Books Example</button>
                 </div>
             </div>
 
@@ -583,6 +614,24 @@ POP DX</textarea>
                 <div class="val-title" id="val-res-title" style="font-size: 1.2rem; font-weight: 700; margin-bottom: 1rem;"></div>
                 <p class="val-reason" id="val-res-reason" style="color:var(--text-dim); margin-bottom:1rem; line-height:1.5;"></p>
                 <div id="val-res-correction-box" style="display:none; font-family:var(--font-mono); background:#000; padding:1rem; border-radius:6px; color:var(--ax-color);"></div>
+            </div>
+
+            <div id="books-examples-container" style="display:none; margin-top: 1.5rem; background: var(--bg-panel); border: 1px solid var(--border-dim); border-radius: 8px; padding: 1rem;">
+                <h3 style="margin-bottom: 1rem; color: var(--text-main); font-family: var(--font-sans); font-size: 1.1rem;">Books Example (Instruction Tables)</h3>
+                <div style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border-light); border-radius: 6px;">
+                    <table style="width: 100%; text-align: left; border-collapse: collapse; font-family: var(--font-mono); font-size: 0.85rem;">
+                        <thead style="position: sticky; top: 0; background: #000; color: var(--ax-color); z-index: 2;">
+                            <tr>
+                                <th style="padding: 0.75rem; border-bottom: 1px solid var(--border-light);">Assembly Language</th>
+                                <th style="padding: 0.75rem; border-bottom: 1px solid var(--border-light);">Size</th>
+                                <th style="padding: 0.75rem; border-bottom: 1px solid var(--border-light);">Operation</th>
+                            </tr>
+                        </thead>
+                        <tbody id="books-examples-body">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </section>
 
@@ -611,6 +660,134 @@ POP DX</textarea>
     </main>
 
     <script>
+        // --- DATA FROM THE 11 PROVIDED TABLES ---
+        const booksDatabase = [
+            // Table 3-2: Immediate addressing using the MOV instruction
+            { inst: "MOV BL,44", size: "8 bits", op: "Copies 44 decimal (2CH) into BL", valid: true },
+            { inst: "MOV AX,44H", size: "16 bits", op: "Copies 0044H into AX", valid: true },
+            { inst: "MOV SI,0", size: "16 bits", op: "Copies 0000H into SI", valid: true },
+            { inst: "MOV CH,100", size: "8 bits", op: "Copies 100 decimal (64H) into CH", valid: true },
+            { inst: "MOV AL,'A'", size: "8 bits", op: "Copies ASCII A into AL", valid: true },
+            { inst: "MOV AH,1", size: "8 bits", op: "Not allowed in 64-bit mode, but allowed in 32- or 16-bit modes", valid: true },
+            { inst: "MOV AX,'AB'", size: "16 bits", op: "Copies ASCII BA into AX", valid: true },
+            { inst: "MOV CL,11001110B", size: "8 bits", op: "Copies 11001110 binary into CL", valid: true },
+            { inst: "MOV EBX,12340000H", size: "32 bits", op: "Copies 12340000H into EBX", valid: true },
+            { inst: "MOV ESI,12", size: "32 bits", op: "Copies 12 decimal into ESI", valid: true },
+            { inst: "MOV EAX,100B", size: "32 bits", op: "Copies 100 binary into EAX", valid: true },
+            { inst: "MOV RCX,100H", size: "64 bits", op: "Copies 100H into RCX", valid: true },
+
+            // Direct addressing
+            { inst: "MOV AL,NUMBER", size: "8 bits", op: "Copies the byte contents of data segment memory location NUMBER into AL", valid: true },
+            { inst: "MOV AX,COW", size: "16 bits", op: "Copies the word contents of data segment memory location COW into AX", valid: true },
+            { inst: "MOV EAX,WATER", size: "32 bits", op: "Copies the doubleword contents of data segment location WATER into EAX", valid: true },
+            { inst: "MOV NEWS,AL", size: "8 bits", op: "Copies AL into byte memory location NEWS", valid: true },
+            { inst: "MOV THERE,AX", size: "16 bits", op: "Copies AX into word memory location THERE", valid: true },
+            { inst: "MOV HOME,EAX", size: "32 bits", op: "Copies EAX into doubleword memory location HOME", valid: true },
+            { inst: "MOV ES:[2000H],AL", size: "8 bits", op: "Copies AL into extra segment memory at offset address 2000H", valid: true },
+            { inst: "MOV AL,MOUSE", size: "8 bits", op: "Copies the contents of location MOUSE into AL; in 64-bit mode MOUSE can be any address", valid: true },
+            { inst: "MOV RAX,WHISKEY", size: "64 bits", op: "Copies 8 bytes from memory location WHISKEY into RAX", valid: true },
+            
+            // More direct
+            { inst: "MOV CH,DOG", size: "8 bits", op: "Copies the byte contents of data segment memory location DOG into CH", valid: true },
+            { inst: "MOV CH,DS:[1000H]", size: "8 bits", op: "Copies the byte contents of data segment memory offset address 1000H into CH", valid: true },
+            { inst: "MOV ES,DATA6", size: "16 bits", op: "Copies the word contents of data segment memory location DATA6 into ES", valid: true },
+            { inst: "MOV DATA7,BP", size: "16 bits", op: "Copies BP into data segment memory location DATA7", valid: true },
+            { inst: "MOV NUMBER,SP", size: "16 bits", op: "Copies SP into data segment memory location NUMBER", valid: true },
+            { inst: "MOV DATA1,EAX", size: "32 bits", op: "Copies EAX into data segment memory location DATA1", valid: true },
+            { inst: "MOV EDI,SUM1", size: "32 bits", op: "Copies the doubleword contents of data segment memory location SUM1 into EDI", valid: true },
+
+            // Table 3-5: Register indirect addressing
+            { inst: "MOV CX,[BX]", size: "16 bits", op: "Copies the word contents of the data segment memory location addressed by BX into CX", valid: true },
+            { inst: "MOV [BP],DL", size: "8 bits", op: "Copies DL into the stack segment memory location addressed by BP", valid: true },
+            { inst: "MOV [DI],BH", size: "8 bits", op: "Copies BH into the data segment memory location addressed by DI", valid: true },
+            { inst: "MOV [DI],[BX]", size: "-", op: "Memory-to-memory transfers are not allowed except with string instructions", valid: false },
+            { inst: "MOV AL,[EDX]", size: "8 bits", op: "Copies the byte contents of the data segment memory location addressed by EDX into AL", valid: true },
+            { inst: "MOV ECX,[EBX]", size: "32 bits", op: "Copies the doubleword contents of the data segment memory location addressed by EBX into ECX", valid: true },
+            { inst: "MOV RAX,[RDX]", size: "64 bits", op: "Copies the quadword contents of the memory location address by the linear address located in RDX into RAX", valid: true },
+
+            // Table 3-7: Register relative addressing
+            { inst: "MOV AX,[DI+100H]", size: "16 bits", op: "Copies the word contents of the data segment memory location addressed by DI plus 100H into AX", valid: true },
+            { inst: "MOV ARRAY[SI],BL", size: "8 bits", op: "Copies BL into the data segment memory location addressed by ARRAY plus SI", valid: true },
+            { inst: "MOV LIST[SI+2],CL", size: "8 bits", op: "Copies CL into the data segment memory location addressed by the sum of LIST, SI, and 2", valid: true },
+            { inst: "MOV DI,SET_IT[BX]", size: "16 bits", op: "Copies the word contents of the data segment memory location addressed by SET_IT plus BX into DI", valid: true },
+            { inst: "MOV DI,[EAX+10H]", size: "16 bits", op: "Copies the word contents of the data segment location addressed by EAX plus 10H into DI", valid: true },
+            { inst: "MOV ARRAY[EBX],EAX", size: "32 bits", op: "Copies EAX into the data segment memory location addressed by ARRAY plus EBX", valid: true },
+            { inst: "MOV ARRAY[RBX],AL", size: "8 bits", op: "Copies AL into the memory location ARRAY plus RBX", valid: true },
+            { inst: "MOV ARRAY[RCX],EAX", size: "32 bits", op: "Copies EAX into memory location ARRAY plus RCX", valid: true },
+
+            // Table 3-6: Base-plus-index addressing
+            { inst: "MOV CX,[BX+DI]", size: "16 bits", op: "Copies the word contents of the data segment memory location addressed by BX plus DI into CX", valid: true },
+            { inst: "MOV CH,[BP+SI]", size: "8 bits", op: "Copies the byte contents of the stack segment memory location addressed by BP plus SI into CH", valid: true },
+            { inst: "MOV [BX+SI],SP", size: "16 bits", op: "Copies SP into the data segment memory location addressed by BX plus SI", valid: true },
+            { inst: "MOV [BP+DI],AH", size: "8 bits", op: "Copies AH into the stack segment memory location addressed by BP plus DI", valid: true },
+            { inst: "MOV CL,[EDX+EDI]", size: "8 bits", op: "Copies the byte contents of the data segment memory location addressed by EDX plus EDI into CL", valid: true },
+            { inst: "MOV [EAX+EBX],ECX", size: "32 bits", op: "Copies ECX into the data segment memory location addressed by EAX plus EBX", valid: true },
+            { inst: "MOV [RSI+RBX],RAX", size: "64 bits", op: "Copies RAX into the linear memory location addressed by RSI plus RBX", valid: true },
+
+            // Table 3-8: Base relative-plus-index
+            { inst: "MOV DH,[BX+DI+20H]", size: "8 bits", op: "Copies the byte contents of the data segment memory location addressed by the sum of BX, DI and 20H into DH", valid: true },
+            { inst: "MOV AX,FILE[BX+DI]", size: "16 bits", op: "Copies the word contents of the data segment memory location addressed by the sum of FILE, BX and DI into AX", valid: true },
+            { inst: "MOV LIST[BP+DI],CL", size: "8 bits", op: "Copies CL into the stack segment memory location addressed by the sum of LIST, BP, and DI", valid: true },
+            { inst: "MOV LIST[BP+SI+4],DH", size: "8 bits", op: "Copies DH into the stack segment memory location addressed by the sum of LIST, BP, SI, and 4", valid: true },
+            { inst: "MOV EAX,FILE[EBX+ECX+2]", size: "32 bits", op: "Copies the doubleword contents of the memory location addressed by the sum of FILE, EBX, ECX, and 2 into EAX", valid: true },
+
+            // Table 3-9: Scaled-index addressing
+            { inst: "MOV EAX,[EBX+4*ECX]", size: "32 bits", op: "Copies the doubleword contents of the data segment memory location addressed by the sum of 4 times ECX plus EBX into EAX", valid: true },
+            { inst: "MOV [EAX+2*EDI+100H],CX", size: "16 bits", op: "Copies CX into the data segment memory location addressed by the sum of EAX, 100H, and 2 times EDI", valid: true },
+            { inst: "MOV AL,[EBP+2*EDI+2]", size: "8 bits", op: "Copies the byte contents of the stack segment memory location addressed by the sum of EBP, 2, and 2 times EDI into AL", valid: true },
+            { inst: "MOV EAX,ARRAY[4*ECX]", size: "32 bits", op: "Copies the doubleword contents of the data segment memory location addressed by the sum of ARRAY and 4 times ECX into EAX", valid: true },
+
+            // Table 3-10: Indirect program memory addressing
+            { inst: "JMP AX", size: "-", op: "Jumps to the current code segment location addressed by the contents of AX", valid: true },
+            { inst: "JMP CX", size: "-", op: "Jumps to the current code segment location addressed by the contents of CX", valid: true },
+            { inst: "JMP NEAR PTR[BX]", size: "-", op: "Jumps to the current code segment location addressed by the contents of the data segment location addressed by BX", valid: true },
+            { inst: "JMP NEAR PTR[DI+2]", size: "-", op: "Jumps to the current code segment location addressed by the contents of the data segment memory location addressed by DI plus 2", valid: true },
+            { inst: "JMP TABLE[BX]", size: "-", op: "Jumps to the current code segment location addressed by the contents of the data segment memory location address by TABLE plus BX", valid: true },
+            { inst: "JMP ECX", size: "-", op: "Jumps to the current code segment location addressed by the contents of ECX", valid: true },
+            { inst: "JMP RDI", size: "-", op: "Jumps to the linear address contained in the RDI register", valid: true },
+
+            // Table PUSH/POP
+            { inst: "POPF", size: "-", op: "Removes a word from the stack and places it into the flag register", valid: true },
+            { inst: "POPFD", size: "-", op: "Removes a doubleword from the stack and places it into the EFLAG register", valid: true },
+            { inst: "PUSHF", size: "-", op: "Copies the flag register to the stack", valid: true },
+            { inst: "PUSHFD", size: "-", op: "Copies the EFLAG register to the stack", valid: true },
+            { inst: "PUSH AX", size: "-", op: "Copies the AX register to the stack", valid: true },
+            { inst: "POP BX", size: "-", op: "Removes a word from the stack and places it into the BX register", valid: true },
+            { inst: "PUSH DS", size: "-", op: "Copies the DS register to the stack", valid: true },
+            { inst: "PUSH 1234H", size: "-", op: "Copies a word-sized 1234H to the stack", valid: true },
+            { inst: "POP CS", size: "-", op: "This instruction is illegal", valid: false },
+            { inst: "PUSH WORD PTR[BX]", size: "-", op: "Copies the word contents of the data segment memory location addressed by BX onto the stack", valid: true },
+            { inst: "PUSHA", size: "-", op: "Copies AX, CX, DX, BX, SP, BP, DI, and SI to the stack", valid: true },
+            { inst: "POPA", size: "-", op: "Removes the word contents for the following registers from the stack: SI, DI, BP, SP, BX, DX, CX, and AX", valid: true },
+            { inst: "PUSHAD", size: "-", op: "Copies EAX, ECX, EDX, EBX, ESP, EBP, EDI, and ESI to the stack", valid: true },
+            { inst: "POPAD", size: "-", op: "Removes the doubleword contents for the following registers from the stack: ESI, EDI, EBP, ESP, EBX, EDX, ECX, and EAX", valid: true },
+            { inst: "POP EAX", size: "-", op: "Removes a doubleword from the stack and places it into the EAX register", valid: true },
+            { inst: "POP RAX", size: "-", op: "Removes a quadword from the stack and places it into the RAC register (64-bit mode)", valid: true },
+            { inst: "PUSH EDI", size: "-", op: "Copies EDI to the stack", valid: true },
+            { inst: "PUSH RSI", size: "-", op: "Copies RSI into the stack (64-bit mode)", valid: true },
+            { inst: "PUSH QWORD PTR[RDX]", size: "-", op: "Copies the quadword contents of the memory location addressed by RDX onto the stack", valid: true },
+
+            // MOV Register to Register
+            { inst: "MOV AL,BL", size: "8 bits", op: "Copies BL into AL", valid: true },
+            { inst: "MOV CH,CL", size: "8 bits", op: "Copies CL into CH", valid: true },
+            { inst: "MOV R8B,CL", size: "8 bits", op: "Copies CL to the byte portion of R8 (64-bit mode)", valid: true },
+            { inst: "MOV R8B,CH", size: "8 bits", op: "Not allowed", valid: false },
+            { inst: "MOV AX,CX", size: "16 bits", op: "Copies CX into AX", valid: true },
+            { inst: "MOV SP,BP", size: "16 bits", op: "Copies BP into SP", valid: true },
+            { inst: "MOV DS,AX", size: "16 bits", op: "Copies AX into DS", valid: true },
+            { inst: "MOV BP,R10W", size: "16 bits", op: "Copies R10 into BP (64-bit mode)", valid: true },
+            { inst: "MOV SI,DI", size: "16 bits", op: "Copies DI into SI", valid: true },
+            { inst: "MOV BX,ES", size: "16 bits", op: "Copies ES into BX", valid: true },
+            { inst: "MOV ECX,EBX", size: "32 bits", op: "Copies EBX into ECX", valid: true },
+            { inst: "MOV ESP,EDX", size: "32 bits", op: "Copies EDX into ESP", valid: true },
+            { inst: "MOV EDX,R9D", size: "32 bits", op: "Copies R9 into EDX (64-bit mode)", valid: true },
+            { inst: "MOV RAX,RDX", size: "64 bits", op: "Copies RDX into RAX", valid: true },
+            { inst: "MOV DS,CX", size: "16 bits", op: "Copies CX into DS", valid: true },
+            { inst: "MOV ES,DS", size: "-", op: "Not allowed (segment-to-segment)", valid: false },
+            { inst: "MOV BL,DX", size: "-", op: "Not allowed (mixed sizes)", valid: false },
+            { inst: "MOV CS,AX", size: "-", op: "Not allowed (the code segment register may not be the destination register)", valid: false }
+        ];
+
         // --- NAVIGATION ---
         document.querySelectorAll('.nav-item').forEach(link => {
             link.addEventListener('click', (e) => {
@@ -1178,9 +1355,34 @@ POP DX</textarea>
             container.innerHTML = html + middleHtml + rightHtml + `</div>`;
         }
 
-        // --- INSTRUCTION VALIDATOR ---
+        // --- NEW VALIDATION & BOOK DATA FUNCTIONS ---
+        function toggleBooksExamples() {
+            let container = document.getElementById('books-examples-container');
+            if (container.style.display === 'none') {
+                container.style.display = 'block';
+                let tbody = document.getElementById('books-examples-body');
+                // Use children.length instead of innerHTML === '' to avoid whitespace bugs!
+                if (tbody.children.length === 0) {
+                    let html = booksDatabase.map(b => {
+                        let color = b.valid ? 'var(--text-main)' : 'var(--dx-color)';
+                        return `<tr>
+                            <td style="padding: 0.75rem; border-bottom: 1px solid var(--border-dim); color: ${color}; font-weight: 700;">${b.inst}</td>
+                            <td style="padding: 0.75rem; border-bottom: 1px solid var(--border-dim); color: var(--text-dim);">${b.size || '-'}</td>
+                            <td style="padding: 0.75rem; border-bottom: 1px solid var(--border-dim); color: var(--text-dim);">${b.op}</td>
+                        </tr>`;
+                    }).join('');
+                    tbody.innerHTML = html;
+                }
+            } else {
+                container.style.display = 'none';
+            }
+        }
+
         function validateInput() {
-            let input = document.getElementById('val-input').value.trim().toUpperCase();
+            let inputRaw = document.getElementById('val-input').value;
+            // Clean spacing and standardize commas for strict cross-checks
+            let input = inputRaw.trim().toUpperCase().replace(/\s*,\s*/g, ',').replace(/\s+/g, ' ');
+            
             let resBox = document.getElementById('val-result');
             let resTitle = document.getElementById('val-res-title');
             let resReason = document.getElementById('val-res-reason');
@@ -1190,23 +1392,49 @@ POP DX</textarea>
             resBox.style.display = 'block';
             resCorrBox.style.display = 'none';
 
-            let result = parseValidatorRule(input);
+            // 1. Exact Match against the Books Database
+            let exactMatch = booksDatabase.find(b => b.inst.trim().toUpperCase().replace(/\s*,\s*/g, ',').replace(/\s+/g, ' ') === input);
+            
+            if (exactMatch) {
+                if (exactMatch.valid) {
+                    resBox.style.borderColor = 'var(--bx-color)';
+                    resTitle.innerHTML = `<span style="color:var(--bx-color);">✓ Valid Instruction (Book Match)</span>`;
+                    resReason.innerHTML = "<strong>Operation:</strong> " + exactMatch.op;
+                } else {
+                    resBox.style.borderColor = 'var(--dx-color)';
+                    resTitle.innerHTML = `<span style="color:var(--dx-color);">✕ Invalid Instruction (Book Match)</span>`;
+                    resReason.innerHTML = "<strong>Reason:</strong> " + exactMatch.op;
+                }
+                return;
+            }
+
+            // 2. Fallback to Strict General Parser for non-book data (with strict dynamic validation!)
+            let result = parseValidatorRule(inputRaw);
 
             if (result.valid) {
                 resBox.style.borderColor = 'var(--bx-color)';
                 resTitle.innerHTML = `<span style="color:var(--bx-color);">✓ Valid Instruction</span>`;
-                resReason.innerHTML = result.reason;
+                resReason.innerHTML = "<strong>Operation:</strong> " + result.op;
             } else {
                 resBox.style.borderColor = 'var(--dx-color)';
                 resTitle.innerHTML = `<span style="color:var(--dx-color);">✕ Invalid Instruction</span>`;
                 resReason.innerHTML = result.reason;
-                if (result.correction) {
-                    resCorrBox.style.display = 'block';
+                
+                // Fetch valid alternatives directly from the loaded Book Data to "close all valid instructions"
+                let opcode = input.split(/[\s,]+/)[0];
+                let closeMatches = booksDatabase.filter(b => b.valid && b.inst.startsWith(opcode)).slice(0, 5);
+                
+                resCorrBox.style.display = 'block';
+                if (closeMatches.length > 0) {
+                    resCorrBox.innerHTML = `<div style="margin-bottom:8px; color:var(--text-dim);">Close valid instructions:</div>` + 
+                        closeMatches.map(b => `• ${b.inst}`).join('<br>');
+                } else {
                     resCorrBox.innerHTML = `<div>Valid Alternative / Suggestion:</div>${result.correction}`;
                 }
             }
         }
 
+        // Extremely Strict & Accurate Parser Algorithm
         function parseValidatorRule(inst) {
             inst = inst.trim().toUpperCase().replace(/(WORD|BYTE)\s+PTR\s+/gi, '').replace(/\s+/g, ' ').replace(/\s*,\s*/g, ',');
             if (!inst) return { valid: false, reason: "Empty instruction.", correction: "MOV AX, BX" };
@@ -1216,53 +1444,87 @@ POP DX</textarea>
             let op1 = parts[1];
             let op2 = parts[2];
 
-            const validOpcodes = ['MOV', 'PUSH', 'POP', 'ADD', 'SUB', 'XCHG'];
+            const validOpcodes = ['MOV', 'PUSH', 'POP', 'ADD', 'SUB', 'XCHG', 'JMP'];
+            const validRegs = ['AL','AH','AX','EAX','RAX','BL','BH','BX','EBX','RBX','CL','CH','CX','ECX','RCX','DL','DH','DX','EDX','RDX','SP','ESP','BP','EBP','SI','ESI','DI','EDI','CS','DS','ES','SS','FS','GS','R8B','R9D','R10W'];
+
+            let isReg = (o) => validRegs.includes(o);
+            let isImm = (o) => /^[0-9A-F]+H?$/.test(o) || /^[0-9]+$/.test(o) || /^'[A-Z0-9]+'$/.test(o) || /^[0-1]+B$/.test(o);
+            let isMem = (o) => {
+                if (isReg(o) || isImm(o)) return false; // Prevent bugs where registers are seen as memory
+                return /^\[.*\]$/.test(o) || /^[A-Z_]+(\[.*\])?$/.test(o);
+            };
 
             if (!validOpcodes.includes(opcode)) {
-                let closest = validOpcodes.find(op => op.startsWith(opcode.charAt(0))) || 'MOV';
-                return { valid: false, reason: "Unrecognized instruction or unsupported opcode.", correction: `Did you mean: ${closest} AX, BX ?` };
+                return { valid: false, reason: "Unrecognized instruction or unsupported opcode.", correction: "" };
             }
 
-            if (['MOV', 'ADD', 'SUB', 'XCHG'].includes(opcode) && (!op1 || !op2)) {
-                return { valid: false, reason: `${opcode} requires two operands.`, correction: `${opcode} AX, BX` };
+            if (['MOV', 'ADD', 'SUB', 'XCHG'].includes(opcode)) {
+                if (!op1 || !op2) return { valid: false, reason: `${opcode} requires two operands.`, correction: `${opcode} AX, BX` };
+                if (!isReg(op1) && !isMem(op1)) return { valid: false, reason: "Destination must be a register or memory location.", correction: "" };
+                if (!isReg(op2) && !isMem(op2) && !isImm(op2)) return { valid: false, reason: "Source must be a valid register, memory location, or immediate value.", correction: "" };
             }
+            
             if (['PUSH', 'POP'].includes(opcode) && !op1) {
                 return { valid: false, reason: `${opcode} requires one operand.`, correction: `${opcode} AX` };
             }
+            if (opcode === 'JMP') {
+                if (!op1) return { valid: false, reason: "JMP requires an operand.", correction: "JMP AX" };
+                if (isReg(op1) || isMem(op1)) return { valid: true, op: `Jumps execution to the address in ${op1}.` };
+            }
 
+            // General architectural rule fallbacks with dynamic explanations
             if (opcode === 'PUSH') {
-                if (/^[0-9A-F]+H?$/.test(op1)) return { valid: false, reason: "Cannot PUSH an immediate value in standard 8086.", correction: `MOV AX, ${op1}<br>PUSH AX` };
-                return { valid: true, reason: "Syntax conforms to architectural rules." };
+                if (isImm(op1)) return { valid: false, reason: "Cannot PUSH an immediate value in standard 8086.", correction: `MOV AX, ${op1}<br>PUSH AX` };
+                return { valid: true, op: `Pushes the contents of ${op1} onto the stack.` };
             }
 
             if (opcode === 'POP') {
-                if (/^[0-9A-F]+H?$/.test(op1)) return { valid: false, reason: "Cannot POP into an immediate value.", correction: "POP AX" };
+                if (isImm(op1)) return { valid: false, reason: "Cannot POP into an immediate value.", correction: "POP AX" };
                 if (op1 === 'CS') return { valid: false, reason: "Cannot POP directly into the Code Segment (CS).", correction: "POP DS" };
-                return { valid: true, reason: "Syntax conforms to architectural rules." };
+                return { valid: true, op: `Pops the top of the stack into ${op1}.` };
             }
 
             if (opcode === 'MOV') {
                 if (op1 === 'CS') return { valid: false, reason: "Cannot MOV directly into Code Segment (CS).", correction: "MOV DS, " + (op2 || "AX") };
-                if (/^[0-9A-F]+H?$/.test(op1)) return { valid: false, reason: "Destination cannot be an immediate constant.", correction: `MOV AX, ${op1}` };
-                if (['CS', 'DS', 'ES', 'SS'].includes(op1) && /^[0-9A-F]+H?$/.test(op2)) {
+                if (isImm(op1)) return { valid: false, reason: "Destination cannot be an immediate constant.", correction: `MOV AX, ${op1}` };
+                if (['CS', 'DS', 'ES', 'SS'].includes(op1) && isImm(op2)) {
                     return { valid: false, reason: "Segment registers do not accept immediate data directly.", correction: `MOV AX, ${op2}<br>MOV ${op1}, AX` };
                 }
-                if (/^\[.*\]$/.test(op1) && /^\[.*\]$/.test(op2)) {
+                if (isMem(op1) && isMem(op2)) {
                     return { valid: false, reason: "Direct memory-to-memory transfers are not allowed.", correction: `MOV AX, ${op2}<br>MOV ${op1}, AX` };
                 }
-                return { valid: true, reason: "Syntax conforms to architectural rules." };
+
+                // Check for size mismatch if both are registers (approximate protection for the simulator)
+                let is8Bit = (r) => ['AL','AH','BL','BH','CL','CH','DL','DH','R8B'].includes(r);
+                let is16Bit = (r) => ['AX','BX','CX','DX','SP','BP','SI','DI','CS','DS','ES','SS','R10W'].includes(r);
+                let is32Bit = (r) => ['EAX','EBX','ECX','EDX','ESP','EBP','ESI','EDI','R9D'].includes(r);
+                let is64Bit = (r) => ['RAX','RBX','RCX','RDX'].includes(r);
+
+                if (isReg(op1) && isReg(op2)) {
+                    if ((is8Bit(op1) && !is8Bit(op2)) || 
+                        (is16Bit(op1) && !is16Bit(op2)) || 
+                        (is32Bit(op1) && !is32Bit(op2)) ||
+                        (is64Bit(op1) && !is64Bit(op2))) {
+                        return { valid: false, reason: "Mixed operand sizes are not allowed.", correction: "Ensure both registers are the same bit-size." };
+                    }
+                }
+                
+                return { valid: true, op: `Copies the contents of ${op2} into ${op1}.` };
             }
             
             if (opcode === 'XCHG') {
-                if (/^[0-9A-F]+H?$/.test(op1) || /^[0-9A-F]+H?$/.test(op2)) return { valid: false, reason: "Cannot XCHG with immediate values.", correction: "XCHG AX, BX" };
-                if (/^\[.*\]$/.test(op1) && /^\[.*\]$/.test(op2)) return { valid: false, reason: "Cannot XCHG memory to memory.", correction: `MOV AX, ${op1}<br>XCHG AX, ${op2}<br>MOV ${op1}, AX` };
-                return { valid: true, reason: "Syntax conforms to architectural rules." };
+                if (isImm(op1) || isImm(op2)) return { valid: false, reason: "Cannot XCHG with immediate values.", correction: "XCHG AX, BX" };
+                if (isMem(op1) && isMem(op2)) return { valid: false, reason: "Cannot XCHG memory to memory.", correction: `MOV AX, ${op1}<br>XCHG AX, ${op2}<br>MOV ${op1}, AX` };
+                return { valid: true, op: `Swaps the contents of ${op1} and ${op2}.` };
             }
             
             if (['ADD', 'SUB'].includes(opcode)) {
-                if (/^[0-9A-F]+H?$/.test(op1)) return { valid: false, reason: "Destination cannot be an immediate constant.", correction: `${opcode} AX, ${op1}` };
-                if (/^\[.*\]$/.test(op1) && /^\[.*\]$/.test(op2)) return { valid: false, reason: "Direct memory-to-memory arithmetic is not allowed.", correction: `MOV AX, ${op2}<br>${opcode} ${op1}, AX` };
-                return { valid: true, reason: "Syntax conforms to architectural rules." };
+                if (isImm(op1)) return { valid: false, reason: "Destination cannot be an immediate constant.", correction: `${opcode} AX, ${op1}` };
+                if (isMem(op1) && isMem(op2)) return { valid: false, reason: "Direct memory-to-memory arithmetic is not allowed.", correction: `MOV AX, ${op2}<br>${opcode} ${op1}, AX` };
+                
+                let verb = opcode === 'ADD' ? 'Adds' : 'Subtracts';
+                let prep = opcode === 'ADD' ? 'to' : 'from';
+                return { valid: true, op: `${verb} ${op2} ${prep} ${op1} and stores the result in ${op1}.` };
             }
 
             return { valid: false, reason: "Invalid syntax format.", correction: "Check instruction spelling and format." };
