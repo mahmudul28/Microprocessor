@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive K-Map Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        
+        /* Smooth transitions for interactive elements */
+        .cell-transition {
+            transition: all 0.2s ease-in-out;
+        }
+        
+        /* Glow effect on hover */
+        .cell-glow:hover {
+            box-shadow: inset 0 0 20px rgba(99, 102, 241, 0.5); /* Indigo glow */
+            background-color: #334155; /* Slightly lighter slate */
+            z-index: 5;
+        }
+        
+        /* Diagonal line for the top-left table header */
+        .diagonal-bg {
+            position: relative;
+        }
+        .diagonal-bg svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+        .diagonal-bg line {
+            stroke: #475569; /* Slate 600 */
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-200 min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-indigo-900 text-white shadow-lg shadow-indigo-900/20 py-4 border-b border-indigo-800">
+        <div class="max-w-6xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-3">
+            <h1 class="text-2xl font-bold flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                </svg>
+                Karnaugh Map Generator
+            </h1>
+            <p class="text-indigo-300 text-sm font-medium">Mahmudul Hasan(2202156)</p>
+        </div>
+    </header>
+
+    <main class="flex-grow w-full max-w-6xl mx-auto p-4 md:p-6 grid grid-cols-1 md:grid-cols-12 gap-6">
+        
+        <!-- Controls Sidebar -->
+        <div class="md:col-span-4 flex flex-col gap-6">
+            
+            <!-- Configuration Card -->
+            <div class="bg-slate-800 rounded-xl shadow-lg border border-slate-700 p-5">
+                <h2 class="text-lg font-semibold mb-4 text-slate-100 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-indigo-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+                    </svg>
+                    Configuration
+                </h2>
+                
+                <div class="mb-5">
+                    <label class="block text-sm font-medium text-slate-400 mb-2">Number of Variables</label>
+                    <div class="flex gap-2 flex-wrap">
+                        <button onclick="setVariables(2)" id="btn-var-2" class="flex-1 py-2 px-1 rounded-lg border font-medium transition-colors hover:bg-slate-700 border-slate-600 bg-slate-800 text-slate-300">2 Vars</button>
+                        <button onclick="setVariables(3)" id="btn-var-3" class="flex-1 py-2 px-1 rounded-lg border font-medium transition-colors hover:bg-slate-700 border-slate-600 bg-slate-800 text-slate-300">3 Vars</button>
+                        <button onclick="setVariables(4)" id="btn-var-4" class="flex-1 py-2 px-1 rounded-lg border font-medium transition-colors hover:bg-slate-700 border-slate-600 bg-slate-800 text-slate-300">4 Vars</button>
+                        <button onclick="setVariables(5)" id="btn-var-5" class="flex-1 py-2 px-1 rounded-lg border font-medium transition-colors hover:bg-slate-700 border-slate-600 bg-slate-800 text-slate-300">5 Vars</button>
+                    </div>
+                </div>
+
+                <div class="mb-5">
+                    <label class="block text-sm font-medium text-slate-400 mb-2">Variable Names</label>
+                    <select id="var-names-select" onchange="changeVarNames(this.value)" class="w-full bg-slate-900 border border-slate-600 text-slate-200 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5 transition-colors">
+                        <option value="A,B,C,D,E">A, B, C, D, E</option>
+                        <option value="V,W,X,Y,Z">V, W, X, Y, Z</option>
+                        <option value="P,Q,R,S,T">P, Q, R, S, T</option>
+                        <option value="w,x,y,z,v">w, x, y, z, v</option>
+                    </select>
+                </div>
+
+                <div class="pt-4 border-t border-slate-700">
+                    <button onclick="resetMap()" class="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium rounded-lg transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Clear Map (Set all to 0)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Output Results Card -->
+            <div class="bg-slate-800 rounded-xl shadow-lg border border-slate-700 p-5">
+                <h2 class="text-lg font-semibold mb-4 text-slate-100 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-indigo-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M3 5a2 2 0 012-2h10a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm11 1H6v8l4-2 4 2V6z" clip-rule="evenodd" />
+                    </svg>
+                    Expressions
+                </h2>
+                
+                <div class="mb-4">
+                    <h3 class="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-1">Simplified Equation</h3>
+                    <div id="simplified-output" class="p-3 bg-slate-900 border border-slate-700 rounded-lg text-indigo-300 font-mono font-bold text-lg break-words min-h-[3.5rem] flex flex-wrap items-center shadow-inner">
+                        F = 0
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Minterms (SOP)</h3>
+                    <div id="minterms-output" class="p-3 bg-slate-900 rounded-lg border border-slate-700 text-slate-300 font-mono text-sm break-words min-h-[3rem] shadow-inner">
+                        Σm()
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Maxterms (POS)</h3>
+                    <div id="maxterms-output" class="p-3 bg-slate-900 rounded-lg border border-slate-700 text-slate-300 font-mono text-sm break-words min-h-[3rem] shadow-inner">
+                        ΠM()
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="md:col-span-8">
+            <div class="bg-slate-800 rounded-xl shadow-lg border border-slate-700 p-6 flex flex-col items-center justify-center min-h-[400px]">
+                
+                <div class="text-center mb-8">
+                    <h2 class="text-xl font-bold text-slate-100" id="map-title">4-Variable K-Map</h2>
+                    <p class="text-sm text-slate-400 mt-2 flex items-center justify-center gap-2">
+                        <span class="inline-block w-3 h-3 bg-indigo-500 rounded-full animate-pulse"></span>
+                        Hover and click cells to toggle between 0, 1, and X (Don't Care).
+                    </p>
+                </div>
+
+                <!-- The K-Map Table Container -->
+                <div id="kmap-container" class="overflow-x-auto w-full flex flex-col xl:flex-row gap-8 justify-center pb-4">
+                    <!-- Table content generated via JS -->
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Application State
+        let currentVars = 4;
+        let currentVarNames = ["A", "B", "C", "D", "E"];
+        let mapData = new Array(32).fill(0); // Up to 32 minterms for 5 vars
+
+        // Function to dynamically generate K-map configuration based on selected variable names
+        function getDynamicConfig(n, vars) {
+            if (n === 2) {
+                return {
+                    title: "2-Variable K-Map",
+                    isSplit: false,
+                    rowVars: vars[0], colVars: vars[1],
+                    rowLabels: ["0", "1"], colLabels: ["0", "1"],
+                    grids: [ [ [0, 1], [2, 3] ] ]
+                };
+            } else if (n === 3) {
+                return {
+                    title: "3-Variable K-Map",
+                    isSplit: false,
+                    rowVars: vars[0], colVars: vars[1] + vars[2],
+                    rowLabels: ["0", "1"], colLabels: ["00", "01", "11", "10"],
+                    grids: [ [ [0, 1, 3, 2], [4, 5, 7, 6] ] ]
+                };
+            } else if (n === 4) {
+                return {
+                    title: "4-Variable K-Map",
+                    isSplit: false,
+                    rowVars: vars[0] + vars[1], colVars: vars[2] + vars[3],
+                    rowLabels: ["00", "01", "11", "10"], colLabels: ["00", "01", "11", "10"],
+                    grids: [ [
+                        [ 0,  1,  3,  2],
+                        [ 4,  5,  7,  6],
+                        [12, 13, 15, 14],
+                        [ 8,  9, 11, 10]
+                    ] ]
+                };
+            } else if (n === 5) {
+                // Split into two 4-variable maps for 5 variables
+                return {
+                    title: "5-Variable K-Map (Split View)",
+                    isSplit: true,
+                    splitLabels: [`${vars[0]} = 0`, `${vars[0]} = 1`],
+                    rowVars: vars[1] + vars[2], colVars: vars[3] + vars[4],
+                    rowLabels: ["00", "01", "11", "10"], colLabels: ["00", "01", "11", "10"],
+                    grids: [
+                        // Map for Var[0] = 0
+                        [
+                            [ 0,  1,  3,  2],
+                            [ 4,  5,  7,  6],
+                            [12, 13, 15, 14],
+                            [ 8,  9, 11, 10]
+                        ],
+                        // Map for Var[0] = 1
+                        [
+                            [16, 17, 19, 18],
+                            [20, 21, 23, 22],
+                            [28, 29, 31, 30],
+                            [24, 25, 27, 26]
+                        ]
+                    ]
+                };
+            }
+        }
+
+        // Initialize Application
+        function init() {
+            setVariables(4); // Default to 4 variables
+        }
+
+        // Handle Variable Names Change
+        function changeVarNames(val) {
+            currentVarNames = val.split(',');
+            renderMap();
+            updateOutputs();
+        }
+
+        // Handle Variable Count Change
+        function setVariables(n) {
+            currentVars = n;
+            
+            // Update Active Button styling
+            [2, 3, 4, 5].forEach(val => {
+                const btn = document.getElementById(`btn-var-${val}`);
+                if(val === n) {
+                    btn.classList.add('bg-indigo-600', 'text-white', 'border-indigo-500');
+                    btn.classList.remove('text-slate-300', 'bg-slate-800', 'border-slate-600');
+                } else {
+                    btn.classList.remove('bg-indigo-600', 'text-white', 'border-indigo-500');
+                    btn.classList.add('text-slate-300', 'bg-slate-800', 'border-slate-600');
+                }
+            });
+
+            // Reset Map Data based on new size
+            const maxMinterms = Math.pow(2, n);
+            mapData = new Array(maxMinterms).fill(0);
+
+            // Re-render
+            renderMap();
+            updateOutputs();
+        }
+
+        // Reset the current map to all zeros
+        function resetMap() {
+            const maxMinterms = Math.pow(2, currentVars);
+            mapData = new Array(maxMinterms).fill(0);
+            renderMap();
+            updateOutputs();
+        }
+
+        // Render the K-Map Table(s)
+        function renderMap() {
+            const config = getDynamicConfig(currentVars, currentVarNames);
+            document.getElementById('map-title').innerText = config.title;
+            
+            const container = document.getElementById('kmap-container');
+            container.innerHTML = ''; // Clear container
+
+            config.grids.forEach((grid, gIndex) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = "flex flex-col items-center gap-3";
+
+                if (config.isSplit) {
+                    const label = document.createElement('div');
+                    label.className = "px-4 py-1.5 bg-slate-900 border border-slate-700 rounded-full text-indigo-400 font-bold tracking-wider text-sm shadow-inner";
+                    label.innerText = config.splitLabels[gIndex];
+                    wrapper.appendChild(label);
+                }
+
+                const table = document.createElement('table');
+                table.className = "border-collapse select-none shadow-lg";
+                buildTable(table, grid, config, gIndex);
+                wrapper.appendChild(table);
+                container.appendChild(wrapper);
+            });
+        }
+
+        // Construct a single HTML Table for a K-Map Grid
+        function buildTable(table, grid, config, gIndex) {
+            // 1. Create Header Row
+            const headerRow = document.createElement('tr');
+            
+            // Top-Left Diagonal Cell
+            const cornerCell = document.createElement('th');
+            cornerCell.className = "border border-slate-600 bg-slate-800 w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 p-0 diagonal-bg relative";
+            cornerCell.innerHTML = `
+                <svg preserveAspectRatio="none" viewBox="0 0 100 100">
+                    <line x1="0" y1="0" x2="100" y2="100" stroke-width="1.5"/>
+                </svg>
+                <span class="absolute bottom-2 left-3 text-xs md:text-sm font-bold text-slate-400 z-10">${config.rowVars}</span>
+                <span class="absolute top-2 right-3 text-xs md:text-sm font-bold text-slate-400 z-10">${config.colVars}</span>
+            `;
+            headerRow.appendChild(cornerCell);
+
+            // Column Labels
+            config.colLabels.forEach(label => {
+                const th = document.createElement('th');
+                th.className = "border border-slate-600 bg-slate-900/50 px-2 py-2 min-w-[3.5rem] md:min-w-[5rem] text-center text-slate-300 font-bold tracking-widest text-sm";
+                th.innerText = label;
+                headerRow.appendChild(th);
+            });
+            table.appendChild(headerRow);
+
+            // 2. Create Grid Rows
+            config.rowLabels.forEach((label, rowIndex) => {
+                const row = document.createElement('tr');
+                
+                // Row Label
+                const th = document.createElement('th');
+                th.className = "border border-slate-600 bg-slate-900/50 px-2 py-2 text-center text-slate-300 font-bold tracking-widest text-sm";
+                th.innerText = label;
+                row.appendChild(th);
+
+                // Interactive Cells
+                grid[rowIndex].forEach(mintermIndex => {
+                    const td = document.createElement('td');
+                    td.className = "border border-slate-600 bg-slate-900 p-0 cursor-pointer cell-transition cell-glow relative";
+                    td.onclick = () => toggleCell(mintermIndex);
+                    
+                    const val = mapData[mintermIndex];
+                    // Vivid colors for 1 and X in dark mode
+                    let valClass = val === 1 ? "text-emerald-400 font-bold" : val === 'X' ? "text-amber-400 font-bold" : "text-slate-600";
+
+                    td.innerHTML = `
+                        <div class="relative w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20">
+                            <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <span id="cell-val-${mintermIndex}" class="text-2xl md:text-3xl font-inter transition-colors relative z-20 ${valClass}">${val}</span>
+                            </div>
+                            <span class="absolute bottom-1 right-1.5 md:bottom-1 md:right-1.5 text-[10px] md:text-[11px] font-mono text-slate-500 z-20 pointer-events-none">
+                                m${mintermIndex}
+                            </span>
+                            <!-- Group Box Container -->
+                            <div id="box-container-${mintermIndex}" class="absolute inset-0 pointer-events-none z-10"></div>
+                        </div>
+                    `;
+                    row.appendChild(td);
+                });
+                table.appendChild(row);
+            });
+        }
+
+        // Handle clicking on a specific cell
+        function toggleCell(mintermIndex) {
+            // Toggle value (0 -> 1 -> X -> 0)
+            if (mapData[mintermIndex] === 0) {
+                mapData[mintermIndex] = 1;
+            } else if (mapData[mintermIndex] === 1) {
+                mapData[mintermIndex] = 'X';
+            } else {
+                mapData[mintermIndex] = 0;
+            }
+            
+            const val = mapData[mintermIndex];
+            const valSpan = document.getElementById(`cell-val-${mintermIndex}`);
+            valSpan.innerText = val;
+            
+            // Update color styling
+            if(val === 1) {
+                valSpan.className = "text-2xl md:text-3xl font-inter transition-colors relative z-20 text-emerald-400 font-bold";
+            } else if (val === 'X') {
+                valSpan.className = "text-2xl md:text-3xl font-inter transition-colors relative z-20 text-amber-400 font-bold";
+            } else {
+                valSpan.className = "text-2xl md:text-3xl font-inter transition-colors relative z-20 text-slate-600";
+            }
+
+            // Calculate and display new Sum of Products / Product of Sums
+            updateOutputs();
+        }
+
+        // Helper function for Quine-McCluskey: Get minterms covered by a prime implicant
+        function getCoveredMinterms(pi) {
+            let results = [];
+            let numDashes = (pi.match(/-/g) || []).length;
+            let numCombos = Math.pow(2, numDashes);
+            
+            for (let i = 0; i < numCombos; i++) {
+                let bin = i.toString(2).padStart(numDashes, '0');
+                let term = "";
+                let binIdx = 0;
+                for (let j = 0; j < pi.length; j++) {
+                    if (pi[j] === '-') {
+                        term += bin[binIdx++];
+                    } else {
+                        term += pi[j];
+                    }
+                }
+                results.push(parseInt(term, 2));
+            }
+            return results;
+        }
+
+        // Calculate simplified boolean expression
+        function getSimplifiedExpression(minterms, dontcares, varsCount, varNames) {
+            if (minterms.length === 0) return { expression: "0", terms: [] };
+            if (minterms.length + dontcares.length === Math.pow(2, varsCount)) {
+                let all = []; for(let i=0; i<Math.pow(2, varsCount); i++) all.push(i);
+                return { expression: "1", terms: [{ expression: "1", minterms: all }] };
+            }
+
+            let allTerms = [...minterms, ...dontcares];
+            let terms = allTerms.map(m => m.toString(2).padStart(varsCount, '0'));
+            let primeImplicants = new Set();
+            let combined = new Set(terms);
+
+            // Find all prime implicants
+            while (combined.size > 0) {
+                let nextCombined = new Set();
+                let used = new Set();
+                let combinedArray = Array.from(combined);
+
+                for (let i = 0; i < combinedArray.length; i++) {
+                    for (let j = i + 1; j < combinedArray.length; j++) {
+                        let diffCount = 0;
+                        let diffIndex = -1;
+                        for (let k = 0; k < varsCount; k++) {
+                            if (combinedArray[i][k] !== combinedArray[j][k]) {
+                                diffCount++;
+                                diffIndex = k;
+                            }
+                        }
+                        if (diffCount === 1) {
+                            let newTerm = combinedArray[i].substring(0, diffIndex) + '-' + combinedArray[i].substring(diffIndex + 1);
+                            nextCombined.add(newTerm);
+                            used.add(combinedArray[i]);
+                            used.add(combinedArray[j]);
+                        }
+                    }
+                }
+                
+                for (let term of combinedArray) {
+                    if (!used.has(term)) {
+                        primeImplicants.add(term);
+                    }
+                }
+                combined = nextCombined;
+            }
+
+            let piArray = Array.from(primeImplicants);
+            let chart = {};
+            minterms.forEach(m => chart[m] = []);
+
+            piArray.forEach((pi, idx) => {
+                let covered = getCoveredMinterms(pi);
+                covered.forEach(c => {
+                    if (chart[c]) chart[c].push(idx);
+                });
+            });
+
+            let selectedPIs = new Set();
+            let uncoveredMinterms = new Set(minterms);
+
+            // Find Essential Prime Implicants
+            for (let m in chart) {
+                if (chart[m].length === 1) {
+                    selectedPIs.add(chart[m][0]);
+                }
+            }
+
+            selectedPIs.forEach(piIdx => {
+                getCoveredMinterms(piArray[piIdx]).forEach(m => uncoveredMinterms.delete(m));
+            });
+
+            // Greedy cover for remaining minterms
+            while (uncoveredMinterms.size > 0) {
+                let bestPI = -1;
+                let maxCover = 0;
+                piArray.forEach((pi, idx) => {
+                    if (selectedPIs.has(idx)) return;
+                    let coverCount = 0;
+                    getCoveredMinterms(pi).forEach(m => {
+                        if (uncoveredMinterms.has(m)) coverCount++;
+                    });
+                    if (coverCount > maxCover) {
+                        maxCover = coverCount;
+                        bestPI = idx;
+                    }
+                });
+                
+                if (bestPI !== -1) {
+                    selectedPIs.add(bestPI);
+                    getCoveredMinterms(piArray[bestPI]).forEach(m => uncoveredMinterms.delete(m));
+                } else {
+                    break;
+                }
+            }
+
+            // Convert selected PIs to boolean expression string using dynamic var names
+            let termsArray = [];
+            let expression = Array.from(selectedPIs).map(idx => {
+                let pi = piArray[idx];
+                let termStr = "";
+                for (let i = 0; i < varsCount; i++) {
+                    if (pi[i] === '1') termStr += varNames[i];
+                    else if (pi[i] === '0') termStr += varNames[i] + "'";
+                }
+                
+                termsArray.push({
+                    expression: termStr || "1",
+                    minterms: getCoveredMinterms(pi)
+                });
+
+                return termStr || "1";
+            }).join(" + ");
+
+            return { expression: expression, terms: termsArray };
+        }
+
+        // Draw the visualization boxes over grouped terms across all grids
+        function renderGroupBoxes(terms) {
+            // Remove old boxes
+            document.querySelectorAll('.kmap-group-box').forEach(e => e.remove());
+
+            // Dark-mode optimized high-contrast border colors
+            const colors = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#a855f7', '#ec4899', '#06b6d4'];
+            const config = getDynamicConfig(currentVars, currentVarNames);
+            
+            // Map standard Minterms to Matrix coordinates AND Grid Index
+            const mintermToLoc = {};
+            config.grids.forEach((grid, gIndex) => {
+                for(let r=0; r<grid.length; r++) {
+                    for(let c=0; c<grid[0].length; c++) {
+                        mintermToLoc[grid[r][c]] = {g: gIndex, r, c};
+                    }
+                }
+            });
+
+            // Track how many outer borders an edge has to stagger offsets properly
+            const cellEdges = {};
+            for(let i=0; i<Math.pow(2, currentVars); i++) {
+                cellEdges[i] = { t: 0, r: 0, b: 0, l: 0 };
+            }
+
+            terms.forEach((term, idx) => {
+                const color = colors[idx % colors.length];
+                
+                // Draw boxes separately for each grid layout
+                config.grids.forEach((grid, gIndex) => {
+                    // Filter minterms that apply to THIS specific grid block
+                    const mintermsInGrid = term.minterms.filter(m => mintermToLoc[m] && mintermToLoc[m].g === gIndex);
+                    if (mintermsInGrid.length === 0) return;
+
+                    const groupSet = new Set(mintermsInGrid);
+                    const rows = grid.length;
+                    const cols = grid[0].length;
+
+                    mintermsInGrid.forEach(m => {
+                        const {r, c} = mintermToLoc[m];
+                        const container = document.getElementById(`box-container-${m}`);
+                        if(!container) return;
+
+                        // Calculate toroidal wraparound adjacent minterms for the specific grid
+                        const tNeigh = grid[(r - 1 + rows) % rows][c];
+                        const bNeigh = grid[(r + 1) % rows][c];
+                        const lNeigh = grid[r][(c - 1 + cols) % cols];
+                        const rNeigh = grid[r][(c + 1) % cols];
+
+                        const hasT = groupSet.has(tNeigh);
+                        const hasB = groupSet.has(bNeigh);
+                        const hasL = groupSet.has(lNeigh);
+                        const hasR = groupSet.has(rNeigh);
+
+                        const box = document.createElement('div');
+                        box.className = 'kmap-group-box absolute pointer-events-none transition-all duration-300';
+                        box.style.borderStyle = 'dashed';
+                        box.style.borderColor = color;
+                        box.style.backgroundColor = `${color}25`; // Tinted transparent background
+
+                        const step = 4;
+                        const offset = 2;
+
+                        if(!hasT) { cellEdges[m].t++; box.style.borderTopWidth = '2.5px'; box.style.top = `${offset + cellEdges[m].t * step}px`; }
+                        else { box.style.borderTopWidth = '0px'; box.style.top = '0px'; }
+
+                        if(!hasB) { cellEdges[m].b++; box.style.borderBottomWidth = '2.5px'; box.style.bottom = `${offset + cellEdges[m].b * step}px`; }
+                        else { box.style.borderBottomWidth = '0px'; box.style.bottom = '0px'; }
+
+                        if(!hasL) { cellEdges[m].l++; box.style.borderLeftWidth = '2.5px'; box.style.left = `${offset + cellEdges[m].l * step}px`; }
+                        else { box.style.borderLeftWidth = '0px'; box.style.left = '0px'; }
+
+                        if(!hasR) { cellEdges[m].r++; box.style.borderRightWidth = '2.5px'; box.style.right = `${offset + cellEdges[m].r * step}px`; }
+                        else { box.style.borderRightWidth = '0px'; box.style.right = '0px'; }
+
+                        let tl = '0', tr = '0', bl = '0', br = '0';
+                        if(!hasT && !hasL) tl = '6px';
+                        if(!hasT && !hasR) tr = '6px';
+                        if(!hasB && !hasL) bl = '6px';
+                        if(!hasB && !hasR) br = '6px';
+                        box.style.borderRadius = `${tl} ${tr} ${br} ${bl}`;
+
+                        container.appendChild(box);
+                    });
+                });
+            });
+        }
+
+        // Calculate standard Minterms and Maxterms based on current grid
+        function updateOutputs() {
+            let minterms = [];
+            let maxterms = [];
+            let dontcares = [];
+            
+            const maxIndex = Math.pow(2, currentVars);
+            
+            for(let i = 0; i < maxIndex; i++) {
+                if(mapData[i] === 1) {
+                    minterms.push(i);
+                } else if(mapData[i] === 'X') {
+                    dontcares.push(i);
+                } else {
+                    maxterms.push(i);
+                }
+            }
+
+            // Calculate Simplified Equation passing custom names
+            const result = getSimplifiedExpression(minterms, dontcares, currentVars, currentVarNames);
+            
+            // Draw visual grouping boxes on the grid
+            renderGroupBoxes(result.terms);
+
+            // Format Output HTML with Colors corresponding to the groups
+            const colors = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#a855f7', '#ec4899', '#06b6d4'];
+            let eqHTML = "F = ";
+            
+            if (result.terms.length === 0) {
+                eqHTML += `<span class="text-slate-400">${result.expression}</span>`;
+            } else if (result.expression === "1") {
+                eqHTML += `<span class="text-emerald-400">1</span>`;
+            } else {
+                eqHTML += result.terms.map((term, idx) => {
+                    let c = colors[idx % colors.length];
+                    return `<span class="inline-block px-2 py-0.5 m-0.5 rounded text-white font-bold tracking-wide" style="background-color: ${c}; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">${term.expression}</span>`;
+                }).join(' <span class="text-slate-500 font-bold px-1">+</span> ');
+            }
+
+            document.getElementById('simplified-output').innerHTML = eqHTML;
+
+            // Update DOM text for Minterms and Maxterms
+            let minStr = minterms.length > 0 ? `Σm(${minterms.join(', ')})` : "Σm()";
+            if (dontcares.length > 0) minStr += ` + d(${dontcares.join(', ')})`;
+            if (minterms.length === 0 && dontcares.length === 0) minStr = "Σm( None ) - Evaluating to 0";
+            
+            let maxStr = maxterms.length > 0 ? `ΠM(${maxterms.join(', ')})` : "ΠM()";
+            if (dontcares.length > 0) maxStr += ` · d(${dontcares.join(', ')})`;
+            if (maxterms.length === 0 && dontcares.length === 0) maxStr = "ΠM( None ) - Evaluating to 1";
+
+            document.getElementById('minterms-output').innerText = minStr;
+            document.getElementById('maxterms-output').innerText = maxStr;
+        }
+
+        // Boot up the application
+        window.onload = init;
+    </script>
+</body>
+</html>
