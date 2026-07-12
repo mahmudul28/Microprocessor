@@ -81,9 +81,8 @@
                     <label class="block text-sm font-medium text-slate-400 mb-2">Variable Names</label>
                     <select id="var-names-select" onchange="changeVarNames(this.value)" class="w-full bg-slate-900 border border-slate-600 text-slate-200 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5 transition-colors">
                         <option value="A,B,C,D,E">A, B, C, D, E</option>
-                        <option value="V,W,X,Y,Z">V, W, X, Y, Z</option>
+                        <option value="x,y,z,w,v">x, y, z, w, v</option>
                         <option value="P,Q,R,S,T">P, Q, R, S, T</option>
-                        <option value="w,x,y,z,v">w, x, y, z, v</option>
                     </select>
                 </div>
 
@@ -192,7 +191,7 @@
                 return {
                     title: "5-Variable K-Map (Split View)",
                     isSplit: true,
-                    splitLabels: [`${vars[0]} = 0`, `${vars[0]} = 1`],
+                    splitLabels: [`${vars[0]} = 0 (${vars[0]}')`, `${vars[0]} = 1 (${vars[0]})`],
                     rowVars: vars[1] + vars[2], colVars: vars[3] + vars[4],
                     rowLabels: ["00", "01", "11", "10"], colLabels: ["00", "01", "11", "10"],
                     grids: [
@@ -287,6 +286,15 @@
             });
         }
 
+        // Helper to generate boolean literals (e.g., A'B for 01)
+        function generateLiteral(binaryStr, varsStr) {
+            let res = '';
+            for (let i = 0; i < binaryStr.length; i++) {
+                res += varsStr[i] + (binaryStr[i] === '0' ? "'" : "");
+            }
+            return res;
+        }
+
         // Construct a single HTML Table for a K-Map Grid
         function buildTable(table, grid, config, gIndex) {
             // 1. Create Header Row
@@ -308,7 +316,11 @@
             config.colLabels.forEach(label => {
                 const th = document.createElement('th');
                 th.className = "border border-slate-600 bg-slate-900/50 px-2 py-2 min-w-[3.5rem] md:min-w-[5rem] text-center text-slate-300 font-bold tracking-widest text-sm";
-                th.innerText = label;
+                const literal = generateLiteral(label, config.colVars);
+                th.innerHTML = `
+                    <div class="leading-none mb-1 text-slate-300">${label}</div>
+                    <div class="text-[11px] text-indigo-400 font-mono tracking-normal leading-none">${literal}</div>
+                `;
                 headerRow.appendChild(th);
             });
             table.appendChild(headerRow);
@@ -320,7 +332,11 @@
                 // Row Label
                 const th = document.createElement('th');
                 th.className = "border border-slate-600 bg-slate-900/50 px-2 py-2 text-center text-slate-300 font-bold tracking-widest text-sm";
-                th.innerText = label;
+                const literal = generateLiteral(label, config.rowVars);
+                th.innerHTML = `
+                    <div class="leading-none mb-1 text-slate-300">${label}</div>
+                    <div class="text-[11px] text-indigo-400 font-mono tracking-normal leading-none">${literal}</div>
+                `;
                 row.appendChild(th);
 
                 // Interactive Cells
