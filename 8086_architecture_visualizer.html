@@ -388,6 +388,27 @@
             min-height: 70px;
         }
 
+        /* Decoded Flags Strip */
+        .flags-strip { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 0.25rem; }
+        .flag-badge {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 4px 9px;
+            border-radius: 6px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-dim);
+            color: var(--text-empty);
+            transition: all 0.2s ease;
+            letter-spacing: 0.5px;
+        }
+        .flag-badge.on {
+            color: #000;
+            background: var(--adv-color);
+            border-color: var(--adv-color);
+            box-shadow: 0 0 10px rgba(208, 102, 255, 0.5);
+        }
+
         /* Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: var(--bg-base); }
@@ -425,7 +446,7 @@
                 <input type="checkbox" id="toggle-adv-alu" onchange="toggleAdvancedALU()">
                 <span class="slider" style="background-color: var(--border-light);"></span>
             </label>
-            Arithmetic & Logic<br>(AND, OR, SHL, INC, JNZ)
+            Arithmetic & Logic<br>(AND, OR, SHL, MUL, DIV, JNZ)
         </div>
         
         <div class="nav-header">CORE EMULATOR</div>
@@ -516,6 +537,7 @@ HLT</textarea>
                         
                         <div class="stk-reg-card adv-ptr-reg"><div class="stk-reg-name c-adv">ES</div><div class="stk-reg-val-container"><input type="text" class="stk-reg-input inp-es" value="0700" maxlength="4"><span style="font-size:0.8rem; color:var(--text-dim); margin-left:2px;">H</span></div></div>
                         <div class="stk-reg-card adv-ptr-reg"><div class="stk-reg-name c-adv">SS</div><div class="stk-reg-val-container"><input type="text" class="stk-reg-input inp-ss" value="0000" maxlength="4"><span style="font-size:0.8rem; color:var(--text-dim); margin-left:2px;">H</span></div></div>
+                        <div class="flags-strip" id="flags-strip-b" style="grid-column: 1 / -1;"></div>
                     </div>
                 </div>
             </div>
@@ -560,6 +582,11 @@ HLT</textarea>
                     <button class="qa-btn qa-adv" onclick="document.getElementById('m-cli-input').value='ROR AX, CL'; execManual();" style="color:var(--bx-color); border-color:rgba(76,217,100,0.4);">ROR AX, CL</button>
                     <button class="qa-btn qa-adv" onclick="document.getElementById('m-cli-input').value='INC AX'; execManual();" style="color:var(--bx-color); border-color:rgba(76,217,100,0.4);">INC AX</button>
                     <button class="qa-btn qa-adv" onclick="document.getElementById('m-cli-input').value='DEC BX'; execManual();" style="color:var(--bx-color); border-color:rgba(76,217,100,0.4);">DEC BX</button>
+                    <button class="qa-btn qa-adv" onclick="document.getElementById('m-cli-input').value='MUL BX'; execManual();" style="color:var(--bx-color); border-color:rgba(76,217,100,0.4);">MUL BX</button>
+                    <button class="qa-btn qa-adv" onclick="document.getElementById('m-cli-input').value='DIV BX'; execManual();" style="color:var(--bx-color); border-color:rgba(76,217,100,0.4);">DIV BX</button>
+                    <button class="qa-btn qa-adv" onclick="document.getElementById('m-cli-input').value='STC'; execManual();" style="color:var(--bx-color); border-color:rgba(76,217,100,0.4);">STC</button>
+                    <button class="qa-btn qa-adv" onclick="document.getElementById('m-cli-input').value='CLC'; execManual();" style="color:var(--bx-color); border-color:rgba(76,217,100,0.4);">CLC</button>
+                    <button class="qa-btn qa-adv" onclick="document.getElementById('m-cli-input').value='NOP'; execManual();" style="color:var(--bx-color); border-color:rgba(76,217,100,0.4);">NOP</button>
                 </div>
 
                 <div class="quick-actions adv-ptr-reg" style="margin-top:0.5rem; display:none;">
@@ -567,6 +594,7 @@ HLT</textarea>
                     <button class="qa-btn qa-adv" onclick="document.getElementById('m-cli-input').value='MOV [SI], AX'; execManual();" style="color:var(--adv-color); border-color:rgba(208,102,255,0.4);">MOV [SI], AX</button>
                     <button class="qa-btn qa-adv" onclick="document.getElementById('m-cli-input').value='ADD AX, [BX+SI]'; execManual();" style="color:var(--adv-color); border-color:rgba(208,102,255,0.4);">ADD AX, [BX+SI]</button>
                     <button class="qa-btn qa-adv" onclick="document.getElementById('m-cli-input').value='CMP AX, BX'; execManual();" style="color:var(--adv-color); border-color:rgba(208,102,255,0.4);">CMP AX, BX</button>
+                    <button class="qa-btn qa-adv" onclick="document.getElementById('m-cli-input').value='LEA DI, [BX+SI]'; execManual();" style="color:var(--adv-color); border-color:rgba(208,102,255,0.4);">LEA DI, [BX+SI]</button>
                 </div>
             </div>
 
@@ -607,6 +635,7 @@ HLT</textarea>
                         
                         <div class="stk-reg-card adv-ptr-reg"><div class="stk-reg-name c-adv">ES</div><div class="stk-reg-val-container"><input type="text" class="stk-reg-input inp-es" value="0700" maxlength="4"><span style="font-size:0.8rem; color:var(--text-dim); margin-left:2px;">H</span></div></div>
                         <div class="stk-reg-card adv-ptr-reg"><div class="stk-reg-name c-adv">SS</div><div class="stk-reg-val-container"><input type="text" class="stk-reg-input inp-ss" value="0000" maxlength="4"><span style="font-size:0.8rem; color:var(--text-dim); margin-left:2px;">H</span></div></div>
+                        <div class="flags-strip" id="flags-strip-m" style="grid-column: 1 / -1;"></div>
                     </div>
                 </div>
             </div>
@@ -833,9 +862,11 @@ HLT</textarea>
         let historyStack = [];
         let batchLines = [];
         let currentStep = -1;
+        let lineCursor = 0; // which batchLines index runs next (decoupled from historyStack navigation)
         let isBatchMode = false;
         let playInterval = null;
         let isPlaying = false;
+        let isHalted = false;
 
         // --- GLOBAL ADVANCED TOGGLES ---
         function toggleAdvancedPointers() {
@@ -977,6 +1008,26 @@ HLT</textarea>
             updateMemoryGrid('b');
             updateMemoryGrid('m');
             renderMapDiagram();
+            renderFlagsStrip('flags-strip-b');
+            renderFlagsStrip('flags-strip-m');
+        }
+
+        // --- DECODED FLAGS STRIP ---
+        function renderFlagsStrip(elId) {
+            let el = document.getElementById(elId);
+            if (!el) return;
+            let fl = parseInt(sys.regs.FL, 16) || 0;
+            let flags = [
+                { name: 'CF', bit: 0x0001, hint: 'Carry' },
+                { name: 'PF', bit: 0x0004, hint: 'Parity' },
+                { name: 'ZF', bit: 0x0040, hint: 'Zero' },
+                { name: 'SF', bit: 0x0080, hint: 'Sign' },
+                { name: 'OF', bit: 0x0800, hint: 'Overflow' }
+            ];
+            el.innerHTML = flags.map(f => {
+                let on = (fl & f.bit) === f.bit;
+                return `<span class="flag-badge ${on ? 'on' : ''}" title="${f.hint} Flag">${f.name}=${on ? 1 : 0}</span>`;
+            }).join('');
         }
 
         // --- CORE EMULATOR DATA MANIPULATION ---
@@ -1167,9 +1218,9 @@ HLT</textarea>
             let getFlags = () => parseInt(sysCtx.regs.FL, 16);
             
             // Pro-Level Flawless Flag ALU Update
-            let setFlags = (res, cf) => {
+            let setFlags = (res, cf, of) => {
                 let fl = getFlags();
-                if (cf !== null) fl = cf ? (fl | 1) : (fl & ~1); // CF = bit 0
+                if (cf !== null && cf !== undefined) fl = cf ? (fl | 1) : (fl & ~1); // CF = bit 0
                 
                 let zf = (res & 0xFFFF) === 0;
                 fl = zf ? (fl | 0x40) : (fl & ~0x40); // ZF = bit 6
@@ -1182,15 +1233,96 @@ HLT</textarea>
                 for(let i=0; i<8; i++) if((res & (1<<i))) pop++;
                 let pf = (pop % 2 === 0);
                 fl = pf ? (fl | 0x04) : (fl & ~0x04); // PF = bit 2
+
+                if (of !== null && of !== undefined) fl = of ? (fl | 0x800) : (fl & ~0x800); // OF = bit 11
                 
                 sysCtx.regs.FL = fl.toString(16).padStart(4, '0').toUpperCase();
             };
             
             let getCF = () => (getFlags() & 1) === 1;
             let getZF = () => (getFlags() & 0x40) === 0x40;
+            let getSF = () => (getFlags() & 0x80) === 0x80;
+            let getOF = () => (getFlags() & 0x800) === 0x800;
             
             try {
-                if (cmd === 'PUSH') {
+                if (cmd === 'NOP') {
+                    return { success: true, title: `NOP`, desc: `No operation performed. IP advances only.` };
+                }
+                else if (['CLC', 'STC', 'CMC'].includes(cmd)) {
+                    let fl = getFlags();
+                    let cf = getCF();
+                    if (cmd === 'CLC') cf = false;
+                    if (cmd === 'STC') cf = true;
+                    if (cmd === 'CMC') cf = !cf;
+                    fl = cf ? (fl | 1) : (fl & ~1);
+                    sysCtx.regs.FL = fl.toString(16).padStart(4, '0').toUpperCase();
+                    return { success: true, title: cmd, desc: `Carry Flag (CF) is now ${cf ? 1 : 0}.` };
+                }
+                else if (cmd === 'LEA') {
+                    let opDest = resolveOperand(parts[1], sysCtx);
+                    let opSrc = resolveOperand(parts[2], sysCtx);
+                    if (!opDest || opDest.type !== 'reg') throw "LEA destination must be a 16-bit register.";
+                    if (!opSrc || opSrc.type !== 'mem') throw "LEA source must be a memory operand, e.g. [BX+SI].";
+                    let addr = parseInt(opSrc.addrImm, 16) & 0xFFFF;
+                    writeOperand(opDest, addr.toString(16), sysCtx, memCtx);
+                    return { success: true, title: `LEA ${parts[1]}, ${parts[2]}`, desc: `Loaded effective address ${addr.toString(16).toUpperCase().padStart(4,'0')}H into ${parts[1]} (no memory read).` };
+                }
+                else if (['MUL', 'IMUL', 'DIV', 'IDIV'].includes(cmd)) {
+                    let op = resolveOperand(parts[1], sysCtx);
+                    if (!op) throw "Invalid operand for " + cmd;
+                    if (op.type === 'imm') throw `${cmd} operand cannot be an immediate value.`;
+                    let v1 = parseInt(readOperand(op, sysCtx, memCtx), 16);
+                    let ax = parseInt(sysCtx.regs.AX, 16);
+                    let dx = parseInt(sysCtx.regs.DX, 16);
+
+                    if (cmd === 'MUL') {
+                        let product = ax * v1;
+                        let ndx = (product >>> 16) & 0xFFFF, nax = product & 0xFFFF;
+                        sysCtx.regs.DX = ndx.toString(16).padStart(4,'0').toUpperCase();
+                        sysCtx.regs.AX = nax.toString(16).padStart(4,'0').toUpperCase();
+                        let cf = ndx !== 0;
+                        let flM = getFlags();
+                        flM = cf ? (flM | 1 | 0x800) : (flM & ~1 & ~0x800); // CF & OF only (ZF/SF/PF undefined on real hw)
+                        sysCtx.regs.FL = flM.toString(16).padStart(4,'0').toUpperCase();
+                        return { success: true, title: `MUL ${parts[1]}`, desc: `AX × ${parts[1]} (unsigned) → DX:AX = ${ndx.toString(16).toUpperCase().padStart(4,'0')}:${nax.toString(16).toUpperCase().padStart(4,'0')}H` };
+                    }
+                    if (cmd === 'IMUL') {
+                        let sax = ax >= 0x8000 ? ax - 0x10000 : ax;
+                        let sv1 = v1 >= 0x8000 ? v1 - 0x10000 : v1;
+                        let product = (sax * sv1) & 0xFFFFFFFF;
+                        let ndx = (product >>> 16) & 0xFFFF, nax = product & 0xFFFF;
+                        sysCtx.regs.DX = ndx.toString(16).padStart(4,'0').toUpperCase();
+                        sysCtx.regs.AX = nax.toString(16).padStart(4,'0').toUpperCase();
+                        let signExt = (nax & 0x8000) ? 0xFFFF : 0x0000;
+                        let cf = ndx !== signExt;
+                        let flIM = getFlags();
+                        flIM = cf ? (flIM | 1 | 0x800) : (flIM & ~1 & ~0x800);
+                        sysCtx.regs.FL = flIM.toString(16).padStart(4,'0').toUpperCase();
+                        return { success: true, title: `IMUL ${parts[1]}`, desc: `AX × ${parts[1]} (signed) → DX:AX = ${ndx.toString(16).toUpperCase().padStart(4,'0')}:${nax.toString(16).toUpperCase().padStart(4,'0')}H` };
+                    }
+                    if (cmd === 'DIV') {
+                        if (v1 === 0) throw "Divide error: division by zero (Interrupt 0).";
+                        let dividend = (dx * 0x10000) + ax;
+                        let quotient = Math.floor(dividend / v1);
+                        let remainder = dividend % v1;
+                        if (quotient > 0xFFFF) throw "Divide error: quotient overflow (result exceeds AX capacity).";
+                        sysCtx.regs.AX = quotient.toString(16).padStart(4,'0').toUpperCase();
+                        sysCtx.regs.DX = remainder.toString(16).padStart(4,'0').toUpperCase();
+                        return { success: true, title: `DIV ${parts[1]}`, desc: `DX:AX ÷ ${parts[1]} (unsigned) → AX(quotient)=${sysCtx.regs.AX}H, DX(remainder)=${sysCtx.regs.DX}H` };
+                    }
+                    if (cmd === 'IDIV') {
+                        if (v1 === 0) throw "Divide error: division by zero (Interrupt 0).";
+                        let dividend = ((dx * 0x10000) + ax) | 0; // signed 32-bit
+                        let sv1 = v1 >= 0x8000 ? v1 - 0x10000 : v1;
+                        let quotient = Math.trunc(dividend / sv1);
+                        let remainder = dividend % sv1;
+                        if (quotient > 32767 || quotient < -32768) throw "Divide error: quotient overflow (result exceeds AX capacity).";
+                        sysCtx.regs.AX = (quotient & 0xFFFF).toString(16).padStart(4,'0').toUpperCase();
+                        sysCtx.regs.DX = (remainder & 0xFFFF).toString(16).padStart(4,'0').toUpperCase();
+                        return { success: true, title: `IDIV ${parts[1]}`, desc: `DX:AX ÷ ${parts[1]} (signed) → AX(quotient)=${sysCtx.regs.AX}H, DX(remainder)=${sysCtx.regs.DX}H` };
+                    }
+                }
+                else if (cmd === 'PUSH') {
                     let op = resolveOperand(parts[1], sysCtx);
                     if(!op) throw "Invalid operand.";
                     if(op.type === 'imm') throw "Cannot PUSH immediate value.";
@@ -1239,17 +1371,21 @@ HLT</textarea>
                         if (!op1 || !op2) throw "Invalid operands for " + cmd;
                         let v1 = parseInt(readOperand(op1, sysCtx, memCtx), 16);
                         let v2 = parseInt(readOperand(op2, sysCtx, memCtx), 16);
-                        let res, cf = null;
+                        let res, cf = null, of = null;
 
                         if (cmd === 'ADD') { res = v1 + v2; cf = res > 0xFFFF; }
                         if (cmd === 'ADC') { res = v1 + v2 + (getCF() ? 1 : 0); cf = res > 0xFFFF; }
                         if (cmd === 'SUB' || cmd === 'CMP') { res = v1 - v2; cf = v1 < v2; }
                         if (cmd === 'SBB') { res = v1 - v2 - (getCF() ? 1 : 0); cf = v1 < (v2 + (getCF() ? 1 : 0)); }
-                        if (cmd === 'AND' || cmd === 'TEST') { res = v1 & v2; cf = false; }
-                        if (cmd === 'OR')  { res = v1 | v2; cf = false; }
-                        if (cmd === 'XOR') { res = v1 ^ v2; cf = false; }
+                        if (cmd === 'AND' || cmd === 'TEST') { res = v1 & v2; cf = false; of = false; }
+                        if (cmd === 'OR')  { res = v1 | v2; cf = false; of = false; }
+                        if (cmd === 'XOR') { res = v1 ^ v2; cf = false; of = false; }
 
-                        setFlags(res, cf);
+                        let r16 = res & 0xFFFF;
+                        if (['ADD','ADC'].includes(cmd)) of = (((v1 ^ r16) & (v2 ^ r16)) & 0x8000) !== 0;
+                        if (['SUB','SBB','CMP'].includes(cmd)) of = (((v1 ^ v2) & (v1 ^ r16)) & 0x8000) !== 0;
+
+                        setFlags(res, cf, of);
                         res = res & 0xFFFF; 
                         if (res < 0) res = (res + 0x10000) & 0xFFFF; 
                         
@@ -1262,14 +1398,14 @@ HLT</textarea>
                     else if (['INC', 'DEC', 'NEG', 'NOT'].includes(cmd)) {
                         if (!op1) throw "Invalid operand for " + cmd;
                         let v1 = parseInt(readOperand(op1, sysCtx, memCtx), 16);
-                        let res, cf = null;
+                        let res, cf = null, of = null;
 
-                        if (cmd === 'INC') { res = v1 + 1; }
-                        if (cmd === 'DEC') { res = v1 - 1; }
-                        if (cmd === 'NEG') { res = (~v1 & 0xFFFF) + 1; cf = v1 !== 0; }
+                        if (cmd === 'INC') { res = v1 + 1; of = (v1 === 0x7FFF); }
+                        if (cmd === 'DEC') { res = v1 - 1; of = (v1 === 0x8000); }
+                        if (cmd === 'NEG') { res = (~v1 & 0xFFFF) + 1; cf = v1 !== 0; of = (v1 === 0x8000); }
                         if (cmd === 'NOT') { res = (~v1 & 0xFFFF); } 
 
-                        if (cmd !== 'NOT') setFlags(res, cf); // NOT doesn't affect flags
+                        if (cmd !== 'NOT') setFlags(res, cf, of); // NOT doesn't affect flags
 
                         res = res & 0xFFFF;
                         if (res < 0) res = (res + 0x10000) & 0xFFFF;
@@ -1295,20 +1431,37 @@ HLT</textarea>
                         writeOperand(op1, res.toString(16), sysCtx, memCtx);
                         return { success: true, title: `${cmd} ${parts[1]}, ${parts[2]}`, desc: `Shifted. Result: ${res.toString(16).toUpperCase().padStart(4,'0')}H` };
                     }
-                    else if (['JNZ', 'JNE', 'JZ', 'JE', 'JC', 'JNC', 'JMP'].includes(cmd)) {
+                    else if (['JNZ', 'JNE', 'JZ', 'JE', 'JC', 'JB', 'JNAE', 'JNC', 'JAE', 'JNB',
+                              'JA', 'JNBE', 'JBE', 'JNA', 'JG', 'JNLE', 'JGE', 'JNL', 'JL', 'JNGE',
+                              'JLE', 'JNG', 'JO', 'JNO', 'JS', 'JNS', 'JP', 'JPE', 'JNP', 'JPO', 'JMP'].includes(cmd)) {
                         let label = parts[1];
                         let jump = false;
                         if (cmd === 'JMP') jump = true;
                         if (['JNZ', 'JNE'].includes(cmd)) jump = !getZF();
                         if (['JZ', 'JE'].includes(cmd)) jump = getZF();
-                        if (cmd === 'JC') jump = getCF();
-                        if (cmd === 'JNC') jump = !getCF();
+                        if (['JC', 'JB', 'JNAE'].includes(cmd)) jump = getCF();
+                        if (['JNC', 'JAE', 'JNB'].includes(cmd)) jump = !getCF();
+                        if (['JA', 'JNBE'].includes(cmd)) jump = !getCF() && !getZF();
+                        if (['JBE', 'JNA'].includes(cmd)) jump = getCF() || getZF();
+                        if (['JG', 'JNLE'].includes(cmd)) jump = !getZF() && (getSF() === getOF());
+                        if (['JGE', 'JNL'].includes(cmd)) jump = (getSF() === getOF());
+                        if (['JL', 'JNGE'].includes(cmd)) jump = (getSF() !== getOF());
+                        if (['JLE', 'JNG'].includes(cmd)) jump = getZF() || (getSF() !== getOF());
+                        if (cmd === 'JO') jump = getOF();
+                        if (cmd === 'JNO') jump = !getOF();
+                        if (cmd === 'JS') jump = getSF();
+                        if (cmd === 'JNS') jump = !getSF();
+                        if (['JP', 'JPE'].includes(cmd)) jump = (getFlags() & 0x04) === 0x04;
+                        if (['JNP', 'JPO'].includes(cmd)) jump = (getFlags() & 0x04) !== 0x04;
                         
-                        if (jump && window.batchLabels && window.batchLabels[label] !== undefined) {
+                        if (jump) {
+                            if (!window.batchLabels || window.batchLabels[label] === undefined) {
+                                throw `Undefined label '${label}'. Check your spelling or add a '${label}:' line.`;
+                            }
                             let targetLine = window.batchLabels[label];
                             return { success: true, title: `${cmd} ${label}`, desc: `Jumped to ${label}`, jumpToLine: targetLine };
                         }
-                        return { success: true, title: `${cmd} ${label}`, desc: jump ? `Label not found` : `Condition not met (No Jump)` };
+                        return { success: true, title: `${cmd} ${label}`, desc: `Condition not met (No Jump)` };
                     }
                     else if (cmd === 'LOOP') {
                         let label = parts[1];
@@ -1316,11 +1469,35 @@ HLT</textarea>
                         if (cx < 0) cx = 0xFFFF;
                         sysCtx.regs.CX = cx.toString(16).padStart(4, '0').toUpperCase();
                         
-                        if (cx !== 0 && window.batchLabels && window.batchLabels[label] !== undefined) {
+                        if (cx !== 0) {
+                            if (!window.batchLabels || window.batchLabels[label] === undefined) {
+                                throw `Undefined label '${label}'. Check your spelling or add a '${label}:' line.`;
+                            }
                             let targetLine = window.batchLabels[label];
                             return { success: true, title: `LOOP ${label}`, desc: `CX=${sysCtx.regs.CX}. Jumped to ${label}`, jumpToLine: targetLine };
                         }
                         return { success: true, title: `LOOP ${label}`, desc: `CX=${sysCtx.regs.CX}. Loop finished.` };
+                    }
+                    else if (cmd === 'CALL') {
+                        if (!isBatchMode) throw "CALL is only supported in Batch Execution mode (needs line-numbered labels).";
+                        let label = parts[1];
+                        if (!window.batchLabels || window.batchLabels[label] === undefined) {
+                            throw `Undefined label '${label}'. Check your spelling or add a '${label}:' line.`;
+                        }
+                        if (sysCtx.sp <= 0x1000) throw "Simulation Stack Overflow.";
+                        let retLine = lineCursor + 1;
+                        let retIP = (0x0100 + retLine * 2) & 0xFFFF;
+                        sysCtx.sp -= 2;
+                        writeMem16(sysCtx.sp.toString(16), retIP.toString(16).padStart(4,'0'), memCtx);
+                        let targetLine = window.batchLabels[label];
+                        return { success: true, title: `CALL ${label}`, desc: `Pushed return address ${retIP.toString(16).toUpperCase().padStart(4,'0')}H onto the stack. Jumped to ${label}.`, jumpToLine: targetLine };
+                    }
+                    else if (cmd === 'RET') {
+                        if (!isBatchMode) throw "RET is only supported in Batch Execution mode.";
+                        let retIP = parseInt(readMem16(sysCtx.sp.toString(16), memCtx), 16);
+                        sysCtx.sp += 2;
+                        let targetLine = Math.round((retIP - 0x0100) / 2);
+                        return { success: true, title: `RET`, desc: `Popped return address ${retIP.toString(16).toUpperCase().padStart(4,'0')}H. Returning to line ${targetLine + 1}.`, jumpToLine: targetLine };
                     }
                     else {
                         throw "Instruction not supported or format error.";
@@ -1333,16 +1510,19 @@ HLT</textarea>
 
 
         // --- HISTORY / TIME TRAVEL SYSTEM ---
-        function saveHistory(title, desc) {
+        function saveHistory(title, desc, nextLine) {
             if (isBatchMode && currentStep < historyStack.length - 1) {
                 historyStack = historyStack.slice(0, currentStep + 1);
             }
             
+            if (nextLine !== undefined) lineCursor = nextLine;
+
             let snap = {
                 sys: JSON.parse(JSON.stringify(sys)),
                 mem: JSON.parse(JSON.stringify(memHistory)),
                 title: title,
-                desc: desc
+                desc: desc,
+                line: lineCursor
             };
             historyStack.push(snap);
             currentStep = historyStack.length - 1;
@@ -1357,6 +1537,7 @@ HLT</textarea>
             let snap = historyStack[index];
             sys = JSON.parse(JSON.stringify(snap.sys));
             memHistory = JSON.parse(JSON.stringify(snap.mem));
+            if (snap.line !== undefined) lineCursor = snap.line;
             updateUI();
             logAction(snap.title, snap.desc);
             updateStepperUI();
@@ -1392,11 +1573,13 @@ HLT</textarea>
             if(batchLines.length === 0) return alert("No valid instructions found.");
             
             isBatchMode = true;
+            isHalted = false;
             historyStack = [];
             currentStep = 0;
+            lineCursor = 0;
             
             // Initialization Phase for Advanced Branching/Vars
-            sys.ip = 0;
+            sys.regs.IP = '0100';
             window.batchLabels = {};
             window.symTable = {};
             window.varMemPtr = 0x1000;
@@ -1408,7 +1591,7 @@ HLT</textarea>
                 if (lm) window.batchLabels[lm[1]] = idx;
             });
             
-            saveHistory("Loaded Script", `Ready to execute ${batchLines.length} instructions.`);
+            saveHistory("Loaded Script", `Ready to execute ${batchLines.length} instructions.`, 0);
             
             document.getElementById('btn-b-load').textContent = 'Reload Script';
             document.getElementById('btn-b-play').disabled = false;
@@ -1419,6 +1602,7 @@ HLT</textarea>
         function exitBatchMode() {
             pauseBatch();
             isBatchMode = false;
+            isHalted = false;
             document.getElementById('b-step-counter').textContent = "Edit Mode";
             document.getElementById('btn-b-prev').disabled = true;
             document.getElementById('btn-b-next').disabled = true;
@@ -1429,14 +1613,18 @@ HLT</textarea>
 
         function playBatch() {
             if (!isBatchMode || isPlaying) return;
-            if (currentStep >= batchLines.length) return alert("Already at end of script. Reload or Reset.");
+            if (isHalted) return alert("Program has halted (HLT). Reload the script to run again.");
+            let atLiveEnd = (currentStep === historyStack.length - 1) && (lineCursor >= batchLines.length);
+            if (atLiveEnd) return alert("Already at end of script. Reload or Reset.");
             
             isPlaying = true;
             document.getElementById('btn-b-play').disabled = true;
             document.getElementById('btn-b-pause').disabled = false;
             
             playInterval = setInterval(() => {
-                if (currentStep >= batchLines.length) {
+                if (isHalted) { pauseBatch(); return; }
+                let doneNow = (currentStep === historyStack.length - 1) && (lineCursor >= batchLines.length);
+                if (doneNow) {
                     pauseBatch();
                     logAction(`✅ Batch Complete`, `All instructions executed successfully.`);
                     return;
@@ -1458,27 +1646,34 @@ HLT</textarea>
         }
 
         function stepNext() {
-            if (!isBatchMode || currentStep >= batchLines.length) return; 
+            if (!isBatchMode || isHalted) return;
             
             if (currentStep === historyStack.length - 1) {
-                let line = batchLines[currentStep];
+                // Live edge: actually execute the next pending line
+                if (lineCursor >= batchLines.length) return;
+                let line = batchLines[lineCursor];
                 let res = parseAndExecute(line, sys, memHistory);
                 
+                if (res.halt) {
+                    saveHistory(`⏹ Program Halted`, `${line} reached on line ${lineCursor+1}. Execution stopped — reload the script to run again.`, lineCursor + 1);
+                    isHalted = true;
+                    pauseBatch();
+                    updateStepperUI();
+                    return;
+                }
+
                 if(res.success && !res.skip) {
-                    if (res.jumpToLine !== undefined) {
-                        currentStep = res.jumpToLine - 1; // Update iterator step
-                        sys.regs.IP = (0x0100 + res.jumpToLine * 2).toString(16).padStart(4, '0').toUpperCase(); // Target IP Mapping
-                    } else {
-                        sys.regs.IP = (parseInt(sys.regs.IP, 16) + 2).toString(16).padStart(4, '0').toUpperCase(); // Auto Increment IP
-                    }
-                    saveHistory(`Step ${currentStep+1}: ${res.title}`, res.desc);
+                    let nextLine = (res.jumpToLine !== undefined) ? res.jumpToLine : lineCursor + 1;
+                    sys.regs.IP = (0x0100 + nextLine * 2).toString(16).padStart(4, '0').toUpperCase();
+                    saveHistory(`Step ${lineCursor+1}: ${res.title}`, res.desc, nextLine);
                 } else if (!res.success) {
-                    logAction(`⚠️ Error on Line ${currentStep+1}`, res.error);
+                    logAction(`⚠️ Error on Line ${lineCursor+1}`, res.error);
                     pauseBatch();
                 } else if (res.skip) {
-                    saveHistory(`Skip Line ${currentStep+1}`, `Comment or variable allocation.`);
+                    saveHistory(`Skip Line ${lineCursor+1}`, `Comment or variable allocation.`, lineCursor + 1);
                 }
             } else {
+                // Redo: step forward through already-recorded history without re-executing
                 restoreHistory(currentStep + 1);
             }
         }
@@ -1486,16 +1681,19 @@ HLT</textarea>
         function stepPrev() {
             if (!isBatchMode || currentStep <= 0) return;
             pauseBatch();
+            isHalted = false;
             restoreHistory(currentStep - 1);
         }
 
         function updateStepperUI() {
             if (!isBatchMode) return;
-            document.getElementById('b-step-counter').textContent = `Step ${currentStep} / ${batchLines.length}`;
+            document.getElementById('b-step-counter').textContent = isHalted ? `Halted ⏹` : `Line ${lineCursor} / ${batchLines.length}`;
             document.getElementById('btn-b-prev').disabled = (currentStep === 0);
             
-            let isAtEnd = (currentStep >= batchLines.length);
-            document.getElementById('btn-b-next').disabled = isAtEnd;
+            let atLiveEdge = (currentStep === historyStack.length - 1);
+            let isAtEnd = atLiveEdge && (lineCursor >= batchLines.length);
+            document.getElementById('btn-b-next').disabled = isAtEnd || isHalted;
+            document.getElementById('btn-b-play').disabled = isAtEnd || isHalted;
             if(isAtEnd) pauseBatch();
         }
 
@@ -1506,6 +1704,7 @@ HLT</textarea>
             memHistory = {}; 
             historyStack = [];
             currentStep = -1;
+            isHalted = false;
             window.symTable = {};
             window.batchLabels = {};
             exitBatchMode();
@@ -1693,7 +1892,10 @@ HLT</textarea>
             let op1 = parts[1];
             let op2 = parts[2];
 
-            const validOpcodes = ['MOV', 'PUSH', 'POP', 'ADD', 'ADC', 'SUB', 'SBB', 'CMP', 'INC', 'DEC', 'NEG', 'NOT', 'AND', 'OR', 'XOR', 'TEST', 'SHL', 'SHR', 'ROL', 'ROR', 'RCL', 'RCR', 'XCHG', 'JMP', 'JNZ', 'JNE', 'JZ', 'JE', 'JC', 'JNC', 'LOOP', 'HLT', 'END'];
+            const validOpcodes = ['MOV', 'PUSH', 'POP', 'ADD', 'ADC', 'SUB', 'SBB', 'CMP', 'INC', 'DEC', 'NEG', 'NOT', 'AND', 'OR', 'XOR', 'TEST', 'SHL', 'SHR', 'ROL', 'ROR', 'RCL', 'RCR', 'XCHG', 
+                'JMP', 'JNZ', 'JNE', 'JZ', 'JE', 'JC', 'JB', 'JNAE', 'JNC', 'JAE', 'JNB', 'JA', 'JNBE', 'JBE', 'JNA',
+                'JG', 'JNLE', 'JGE', 'JNL', 'JL', 'JNGE', 'JLE', 'JNG', 'JO', 'JNO', 'JS', 'JNS', 'JP', 'JPE', 'JNP', 'JPO',
+                'LOOP', 'CALL', 'RET', 'NOP', 'CLC', 'STC', 'CMC', 'LEA', 'MUL', 'IMUL', 'DIV', 'IDIV', 'HLT', 'END'];
             const validRegs = ['AL','AH','AX','EAX','RAX','BL','BH','BX','EBX','RBX','CL','CH','CX','ECX','RCX','DL','DH','DX','EDX','RDX','SP','ESP','BP','EBP','SI','ESI','DI','EDI','CS','DS','ES','SS','FS','GS','R8B','R9D','R10W'];
 
             let isReg = (o) => validRegs.includes(o);
@@ -1720,9 +1922,30 @@ HLT</textarea>
             if (['PUSH', 'POP', 'INC', 'DEC', 'NEG', 'NOT'].includes(opcode) && !op1) {
                 return { valid: false, reason: `${opcode} requires one operand.`, correction: `${opcode} AX` };
             }
-            if (['JMP', 'JNZ', 'JNE', 'JZ', 'JE', 'JC', 'JNC', 'LOOP'].includes(opcode)) {
+            const jumpOps = ['JMP', 'JNZ', 'JNE', 'JZ', 'JE', 'JC', 'JB', 'JNAE', 'JNC', 'JAE', 'JNB', 'JA', 'JNBE', 'JBE', 'JNA',
+                'JG', 'JNLE', 'JGE', 'JNL', 'JL', 'JNGE', 'JLE', 'JNG', 'JO', 'JNO', 'JS', 'JNS', 'JP', 'JPE', 'JNP', 'JPO', 'LOOP', 'CALL'];
+            if (jumpOps.includes(opcode)) {
                 if (!op1) return { valid: false, reason: "Instruction requires a jump target / label operand.", correction: `${opcode} LABEL1` };
-                return { valid: true, op: `Jumps or branches execution based on current flags.` };
+                return { valid: true, op: opcode === 'CALL' ? `Pushes the return address and transfers control to ${op1}.` : `Jumps or branches execution based on current flags.` };
+            }
+
+            if (['RET', 'NOP', 'CLC', 'STC', 'CMC'].includes(opcode)) {
+                const opDesc = { RET: 'Pops the return address off the stack and resumes the caller.', NOP: 'Performs no operation.', CLC: 'Clears the Carry Flag.', STC: 'Sets the Carry Flag.', CMC: 'Complements (inverts) the Carry Flag.' };
+                return { valid: true, op: opDesc[opcode] };
+            }
+
+            if (opcode === 'LEA') {
+                if (!op1 || !op2) return { valid: false, reason: "LEA requires two operands: a register and a memory operand.", correction: "LEA BX, [SI]" };
+                if (!isReg(op1)) return { valid: false, reason: "LEA destination must be a register.", correction: `LEA BX, ${op2}` };
+                if (!isMem(op2)) return { valid: false, reason: "LEA source must be a memory operand, e.g. [BX+SI].", correction: `${opcode} ${op1}, [SI]` };
+                return { valid: true, op: `Loads the offset address of ${op2} (not its value) into ${op1}.` };
+            }
+
+            if (['MUL', 'IMUL', 'DIV', 'IDIV'].includes(opcode)) {
+                if (!op1) return { valid: false, reason: `${opcode} requires one register or memory operand.`, correction: `${opcode} BX` };
+                if (isImm(op1)) return { valid: false, reason: `${opcode} cannot operate on an immediate value.`, correction: `MOV BX, ${op1}<br>${opcode} BX` };
+                let verb = opcode.includes('DIV') ? 'Divides' : 'Multiplies';
+                return { valid: true, op: `${verb} DX:AX using AX and ${op1} implicitly (${opcode.startsWith('I') ? 'signed' : 'unsigned'}).` };
             }
 
             // General architectural rule fallbacks with dynamic explanations
