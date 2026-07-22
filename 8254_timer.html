@@ -75,8 +75,15 @@
           const [state, setState] = useState({
             mode: 0, loadedCount: 5, count: -1, gate: true, clk: 0, wr: 1, out: 1, phase: 'HIGH', 
             counting: false, gateEdge: false, strobeActive: false, outColorIndex: 0, history: [], timeTick: 0, simNote: "",
-            realN: 5, simClockHz: 1193182 // classic 8253/8254 PC/AT timer reference clock (1.193182 MHz)
+            realN: 5, simClockHz: 1193182, // classic 8253/8254 PC/AT timer reference clock (1.193182 MHz)
+            armed: false // true only after the CPU has actually written a Control Word + Count
           });
+          // Mode selected in the "1. CPU" panel for the *next* Write — deliberately decoupled from
+          // state.mode (which is the mode the chip is actually running right now). On real hardware,
+          // picking a new mode does nothing until you WR a new control word + count; the old code let
+          // the mode buttons mutate the live state.mode directly, which could desync the running
+          // counter from its own mode (e.g. flipping to Mode 3 mid-count without reloading phase/count).
+          const [pendingMode, setPendingMode] = useState(0);
           const stateRef = useRef(state);
           stateRef.current = state;
 
@@ -139,8 +146,8 @@
           const generatedMath = [
             `1. Hardware Addresses: Base=${genBaseAddr}H -> CNT0=${addrCnt0}, CNT1=${addrCnt1}, CNT2=${addrCnt2}, Control=${addrCntr}`,
             calcMethod === 'direct' ? `2. Count (N): User defined directly as ${validN} (decimal) ${bcdMode ? `-> packed BCD bytes ${msbHex}H/${lsbHex}H` : `-> ${hexN}H`}` :
-            calcMethod === 'time' ? `2. Count (N): (Clock Freq) * (Target Time) = ${clockHz} Hz * ${(targetTime * timeUnit).toFixed(6)} s = ${actualN} ${bcdMode ? `-> packed BCD bytes ${msbHex}H/${lsbHex}H` : `-> ${hexN}H`}` :
-            `2. Count (N): (Clock Freq) / (Target Freq) = ${clockHz} Hz / ${targetFreq * freqUnit} Hz = ${actualN} ${bcdMode ? `-> packed BCD bytes ${msbHex}H/${lsbHex}H` : `-> ${hexN}H`}`,
+            calcMethod === 'time' ? `2. Count (N): (Clock Freq) * (Target Time) = ${clockHz.toLocaleString(undefined, {maximumFractionDigits: 3})} Hz * ${(targetTime * timeUnit).toFixed(6)} s = ${actualN} ${bcdMode ? `-> packed BCD bytes ${msbHex}H/${lsbHex}H` : `-> ${hexN}H`}` :
+            `2. Count (N): (Clock Freq) / (Target Freq) = ${clockHz.toLocaleString(undefined, {maximumFractionDigits: 3})} Hz / ${(targetFreq * freqUnit).toLocaleString(undefined, {maximumFractionDigits: 3})} Hz = ${actualN} ${bcdMode ? `-> packed BCD bytes ${msbHex}H/${lsbHex}H` : `-> ${hexN}H`}`,
             `3. Mode Selection: Counter ${genCounter} operating in Mode ${genMode}.`,
             `4. Load Size: N is ${validN}${bcdMode ? ' (BCD)' : ''}. This requires a ${is16Bit ? '16-bit (LSB then MSB)' : '8-bit (LSB only)'} load.`,
             `5. Control Word: SC=${scBits}, RW=${rwBits}, M=${mBits}, BCD=${bcdBit} -> Bin: ${cwBin} -> Hex: ${cwHex}${bcdMode ? ' (BCD counting mode)' : ' (binary counting mode)'}`
@@ -180,12 +187,14 @@
               ...stateRef.current, mode, loadedCount: countValue, count, out, phase, counting,
               strobeActive: false, gateEdge: false, wr: 1, outColorIndex: nextColorIndex, history: newHist, timeTick: tick + 2, simNote: note,
               realN: realNOverride !== null ? realNOverride : countValue,
-              simClockHz: clockHzOverride !== null ? clockHzOverride : stateRef.current.simClockHz
+              simClockHz: clockHzOverride !== null ? clockHzOverride : stateRef.current.simClockHz,
+              armed: true
             });
           };
 
           const handleClockPulse = () => {
             const s = stateRef.current;
+            if (!s.armed) return; // chip hasn't been configured yet — CLK does nothing observable
             let nextClk = s.clk === 0 ? 1 : 0;
             let { count: nextCount, out: nextOut, counting: nextCounting, gateEdge: nextGateEdge, phase: nextPhase, strobeActive: nextStrobe } = s;
 
@@ -229,6 +238,7 @@
 
           const handleGateToggle = () => {
             const s = stateRef.current;
+            if (!s.armed) { setState({ ...s, gate: !s.gate }); return; } // just flip the pin, no side effects yet
             const newGate = !s.gate;
             const risingEdge = (!s.gate && newGate);
             const fallingEdge = (s.gate && !newGate);
@@ -260,7 +270,14 @@
           const handleManualWrite = (e) => {
             e.preventDefault();
             const val = parseInt(e.target.elements.simCountVal.value, 10);
-            if (val >= 2) simulateCPUWrite(state.mode, val, "Manual Configuration Loaded.", val, state.simClockHz);
+            if (!(val >= 2)) return;
+            let visualN = val;
+            let note = "Manual Configuration Loaded.";
+            if (val > 24) {
+              visualN = pendingMode === 3 ? 14 : 10;
+              note = `Scale Magic Applied: N=${val.toLocaleString()} scaled down to ${visualN} for visual demonstration.`;
+            }
+            simulateCPUWrite(pendingMode, visualN, note, val, state.simClockHz);
           };
           
           const handleReset = () => {
@@ -278,7 +295,8 @@
                  outColorIndex: 0,
                  history: [],
                  timeTick: 0,
-                 simNote: "Simulation Reset to idle."
+                 simNote: "Simulation Reset to idle.",
+                 armed: false
              });
           };
 
@@ -295,6 +313,7 @@
 
             setAutoClock(false);
             setActiveTab('simulator');
+            setPendingMode(genMode);
             simulateCPUWrite(genMode, visualN, note, validN, clockHz);
           };
 
@@ -639,16 +658,27 @@
                           
                           <div className="space-y-6">
                             <div>
-                              <label className="block text-xs text-gray-300 mb-3 uppercase tracking-wider font-bold">Select Operating Mode</label>
+                              <div className="flex items-baseline justify-between mb-3">
+                                <label className="block text-xs text-gray-300 uppercase tracking-wider font-bold">Select Mode (for next Write)</label>
+                                {state.armed && (
+                                  <span className="text-[10px] text-green-400 font-mono flex items-center gap-1.5">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 shadow-[0_0_6px_#4ade80]"></span> Mode {state.mode} is live
+                                  </span>
+                                )}
+                              </div>
                               <div className="grid grid-cols-3 gap-3">
                                 {[0, 1, 2, 3, 4, 5].map(m => (
-                                  <button key={m} onClick={() => setState({...state, mode: m, simNote: ""})}
-                                    className={`py-2 rounded-lg font-bold text-sm transition-all duration-300 ${state.mode === m ? 'bg-purple-600 text-white shadow-[0_0_15px_rgba(168,85,247,0.5)] scale-105' : 'bg-gray-950/50 text-gray-400 hover:bg-gray-800 border border-gray-800 hover:border-gray-600'}`}
+                                  <button key={m} onClick={() => setPendingMode(m)}
+                                    className={`relative py-2 rounded-lg font-bold text-sm transition-all duration-300 ${pendingMode === m ? 'bg-purple-600 text-white shadow-[0_0_15px_rgba(168,85,247,0.5)] scale-105' : 'bg-gray-950/50 text-gray-400 hover:bg-gray-800 border border-gray-800 hover:border-gray-600'}`}
                                   >
                                     Mode {m}
+                                    {state.armed && state.mode === m && (
+                                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-400 rounded-full ring-2 ring-gray-900 shadow-[0_0_6px_#4ade80]" title="Currently armed & running"></span>
+                                    )}
                                   </button>
                                 ))}
                               </div>
+                              <p className="text-[11px] text-gray-500 mt-2 leading-snug">Picking a mode here doesn't change the chip yet — like real hardware, it only takes effect once you WR a Control Word + Count below.</p>
                             </div>
 
                             <form onSubmit={handleManualWrite} className="pt-2 border-t border-gray-800">
@@ -661,6 +691,7 @@
                                   <IconZap className="w-5 h-5" /> WR
                                 </button>
                               </div>
+                              <p className="text-[11px] text-gray-500 mt-2 leading-snug">Writes as Mode {pendingMode}. N above 24 auto-scales for the visual counter (Live Metrics still use your real N).</p>
                             </form>
                           </div>
                         </div>
@@ -706,9 +737,9 @@
                               GATE: {state.gate ? '1 (ON)' : '0 (OFF)'}
                             </button>
                             <div className="flex gap-2">
-                              <button onClick={handleClockPulse} disabled={autoClock} className="flex-1 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 border border-gray-600 rounded-xl text-yellow-400 font-bold font-mono text-sm transition-all duration-200 shadow-lg active:scale-95">CLK Step</button>
+                              <button onClick={handleClockPulse} disabled={autoClock || !state.armed} title={!state.armed ? "Write a Count first — the chip isn't configured yet" : "Advance one CLK pulse"} className="flex-1 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 disabled:hover:bg-gray-800 border border-gray-600 rounded-xl text-yellow-400 font-bold font-mono text-sm transition-all duration-200 shadow-lg active:scale-95">CLK Step</button>
                               
-                              <button onClick={() => setAutoClock(!autoClock)} title="Play/Pause" className={`w-12 flex justify-center items-center rounded-xl transition-all duration-300 shadow-lg active:scale-95 ${autoClock ? 'bg-red-600 hover:bg-red-500 text-white shadow-red-900/50' : 'bg-gray-700 hover:bg-gray-600 text-white'}`}>
+                              <button onClick={() => setAutoClock(!autoClock)} disabled={!state.armed} title={!state.armed ? "Write a Count first — the chip isn't configured yet" : "Play/Pause"} className={`w-12 flex justify-center items-center rounded-xl transition-all duration-300 shadow-lg active:scale-95 disabled:opacity-50 ${autoClock ? 'bg-red-600 hover:bg-red-500 text-white shadow-red-900/50' : 'bg-gray-700 hover:bg-gray-600 text-white'}`}>
                                 {autoClock ? <IconPause className="w-5 h-5"/> : <IconPlay className="w-5 h-5"/>}
                               </button>
                               
